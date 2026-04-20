@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AR Face Filters</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>AR Face Filters</h1>
+    <p>Aplicação de filtros faciais em tempo real com webcam.</p>
+  </header>
+
+  <main>
+    <section class="viewer-section">
+      <div class="viewer">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div id="status" class="status">A iniciar webcam...</div>
+      </div>
+    </section>
+
+    <section class="controls-section">
+      <h2>Filtros</h2>
+      <div class="controls">
+        <button class="filter-btn active" data-filter="none">Sem filtro</button>
+        <button class="filter-btn" data-filter="hat">Chapéu</button>
+        <button class="filter-btn" data-filter="glasses">Óculos</button>
+        <button class="filter-btn" data-filter="mask">Máscara</button>
+      </div>
+
+      <div class="info-box">
+        <h3>Estado atual</h3>
+        <p id="currentFilter">Filtro selecionado: Sem filtro</p>
+        <p>Esta é a estrutura base da aplicação. O próximo passo será integrar a deteção facial e posicionar os filtros automaticamente sobre o rosto.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
