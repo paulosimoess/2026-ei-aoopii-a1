@@ -11,10 +11,132 @@ const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
 const filterButtons = document.querySelectorAll(".filter-btn");
 
+const filterImages = {};
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Erro ao carregar imagem: ${src}`));
+    img.src = src;
+  });
+}
+
+async function loadFilterImages() {
+  const [hat, glasses, mask] = await Promise.all([
+    loadImage("./assets/hat.png"),
+    loadImage("./assets/glasses.png"),
+    loadImage("./assets/mask.png")
+  ]);
+
+  filterImages.hat = hat;
+  filterImages.glasses = glasses;
+  filterImages.mask = mask;
+}
+
+function drawRotatedImage(img, x, y, width, height, angle = 0) {
+  if (!img) return;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, -1);
+  ctx.rotate(angle);
+  ctx.drawImage(img, -width / 2, -height / 2, width, height);
+  ctx.restore();
+}
+
 let faceLandmarker = null;
 let drawingUtils = null;
 let lastVideoTime = -1;
 let selectedFilter = "none";
+
+function extractIndicesFromConnections(connections) {
+  const indices = new Set();
+
+  for (const connection of connections) {
+    if (Array.isArray(connection)) {
+      indices.add(connection[0]);
+      indices.add(connection[1]);
+    } else {
+      indices.add(connection.start);
+      indices.add(connection.end);
+    }
+  }
+
+  return [...indices];
+}
+
+const LEFT_EYE_INDICES = extractIndicesFromConnections(
+  FaceLandmarker.FACE_LANDMARKS_LEFT_EYE
+);
+
+const RIGHT_EYE_INDICES = extractIndicesFromConnections(
+  FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE
+);
+
+const LIPS_INDICES = extractIndicesFromConnections(
+  FaceLandmarker.FACE_LANDMARKS_LIPS
+);
+
+const FACE_OVAL_INDICES = extractIndicesFromConnections(
+  FaceLandmarker.FACE_LANDMARKS_FACE_OVAL
+);
+
+function getPixelPoints(landmarks, indices) {
+  return indices.map((index) => ({
+    x: landmarks[index].x * canvas.width,
+    y: landmarks[index].y * canvas.height
+  }));
+}
+
+function getCenterFromPoints(points) {
+  const total = points.reduce(
+    (acc, point) => {
+      acc.x += point.x;
+      acc.y += point.y;
+      return acc;
+    },
+    { x: 0, y: 0 }
+  );
+
+  return {
+    x: total.x / points.length,
+    y: total.y / points.length
+  };
+}
+
+function getBoundsFromPoints(points) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y > maxY) maxY = point.y;
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY
+  };
+}
+
+function getEyeCenters(landmarks) {
+  const leftEyePoints = getPixelPoints(landmarks, LEFT_EYE_INDICES);
+  const rightEyePoints = getPixelPoints(landmarks, RIGHT_EYE_INDICES);
+
+  return {
+    leftEyeCenter: getCenterFromPoints(leftEyePoints),
+    rightEyeCenter: getCenterFromPoints(rightEyePoints)
+  };
+}
 
 function updateFilterLabel() {
   const labels = {
@@ -98,65 +220,78 @@ function getFaceBounds(landmarks) {
   };
 }
 
-function drawSimpleFilter(bounds) {
+function drawSimpleFilter(bounds, landmarks) {
   if (selectedFilter === "none") return;
 
-  ctx.save();
+  const { leftEyeCenter, rightEyeCenter } = getEyeCenters(landmarks);
+
+  const dx = rightEyeCenter.x - leftEyeCenter.x;
+  const dy = rightEyeCenter.y - leftEyeCenter.y;
+  const angle = -Math.atan2(dy, dx);
+  const eyesDistance = Math.hypot(dx, dy);
+
+  const eyesCenterX = (leftEyeCenter.x + rightEyeCenter.x) / 2;
+  const eyesCenterY = (leftEyeCenter.y + rightEyeCenter.y) / 2;
 
   if (selectedFilter === "hat") {
-    const hatWidth = bounds.width * 0.75;
-    const hatHeight = bounds.height * 0.22;
-    const hatX = bounds.minX + bounds.width * 0.125;
-    const hatY = bounds.minY - bounds.height * 0.22;
+    const ovalPoints = getPixelPoints(landmarks, FACE_OVAL_INDICES);
+    const ovalBounds = getBoundsFromPoints(ovalPoints);
 
-    const brimWidth = bounds.width * 1.05;
-    const brimHeight = bounds.height * 0.06;
-    const brimX = bounds.minX - bounds.width * 0.025;
-    const brimY = hatY + hatHeight - 6;
+    const hatX = eyesCenterX;
+    const hatY = ovalBounds.minY - ovalBounds.height * 0.10;
 
-    ctx.fillStyle = "rgba(70, 90, 220, 0.75)";
-    ctx.fillRect(hatX, hatY, hatWidth, hatHeight);
+    const hatWidth = ovalBounds.width * 1.15;
+    const hatHeight = hatWidth * 0.55;
 
-    ctx.fillStyle = "rgba(40, 55, 170, 0.85)";
-    ctx.fillRect(brimX, brimY, brimWidth, brimHeight);
+    drawRotatedImage(
+      filterImages.hat,
+      hatX,
+      hatY,
+      hatWidth,
+      hatHeight,
+      angle
+    );
   }
 
   if (selectedFilter === "glasses") {
-    const y = bounds.minY + bounds.height * 0.32;
-    const frameWidth = bounds.width * 0.28;
-    const frameHeight = bounds.height * 0.18;
-    const gap = bounds.width * 0.10;
+    const glassesX = eyesCenterX;
+    const glassesY = eyesCenterY;
 
-    const leftX = bounds.minX + bounds.width * 0.17;
-    const rightX = leftX + frameWidth + gap;
+    const glassesWidth = eyesDistance * 2.2;
+    const glassesHeight = glassesWidth * 0.45;
 
-    ctx.strokeStyle = "rgba(20, 20, 20, 0.9)";
-    ctx.lineWidth = 5;
-
-    ctx.strokeRect(leftX, y, frameWidth, frameHeight);
-    ctx.strokeRect(rightX, y, frameWidth, frameHeight);
-
-    ctx.beginPath();
-    ctx.moveTo(leftX + frameWidth, y + frameHeight / 2);
-    ctx.lineTo(rightX, y + frameHeight / 2);
-    ctx.stroke();
+    drawRotatedImage(
+      filterImages.glasses,
+      glassesX,
+      glassesY,
+      glassesWidth,
+      glassesHeight,
+      angle
+    );
   }
 
   if (selectedFilter === "mask") {
-    const maskX = bounds.minX + bounds.width * 0.16;
-    const maskY = bounds.minY + bounds.height * 0.48;
-    const maskWidth = bounds.width * 0.68;
-    const maskHeight = bounds.height * 0.28;
+    const lipsPoints = getPixelPoints(landmarks, LIPS_INDICES);
+    const ovalPoints = getPixelPoints(landmarks, FACE_OVAL_INDICES);
 
-    ctx.fillStyle = "rgba(255, 120, 120, 0.45)";
-    ctx.strokeStyle = "rgba(180, 60, 60, 0.8)";
-    ctx.lineWidth = 2;
+    const lipsCenter = getCenterFromPoints(lipsPoints);
+    const ovalBounds = getBoundsFromPoints(ovalPoints);
 
-    ctx.fillRect(maskX, maskY, maskWidth, maskHeight);
-    ctx.strokeRect(maskX, maskY, maskWidth, maskHeight);
+    const maskX = lipsCenter.x;
+    const maskY = lipsCenter.y + ovalBounds.height * 0.02;
+
+    const maskWidth = ovalBounds.width * 0.78;
+    const maskHeight = maskWidth * 0.55;
+
+    drawRotatedImage(
+      filterImages.mask,
+      maskX,
+      maskY,
+      maskWidth,
+      maskHeight,
+      angle
+    );
   }
-
-  ctx.restore();
 }
 
 function drawResults(results) {
@@ -206,7 +341,7 @@ function drawResults(results) {
     });
 
     const bounds = getFaceBounds(landmarks);
-    drawSimpleFilter(bounds);
+    drawSimpleFilter(bounds, landmarks);
   }
 }
 
@@ -240,6 +375,9 @@ async function init() {
 
     statusText.textContent = "A carregar deteção facial...";
     await createFaceLandmarker();
+
+    statusText.textContent = "A carregar filtros...";
+      await loadFilterImages();
 
     statusText.textContent = "Deteção facial ativa";
     renderLoop();
