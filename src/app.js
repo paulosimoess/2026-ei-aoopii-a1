@@ -9,9 +9,19 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
-const filterButtons = document.querySelectorAll(".filter-btn");
+const filterButtons = document.querySelectorAll(".filter-btn[data-filter]");
+const cameraToggleBtn = document.getElementById("cameraToggleBtn");
+const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
 
 const filterImages = {};
+
+let faceLandmarker = null;
+let drawingUtils = null;
+let lastVideoTime = -1;
+let selectedFilter = "none";
+let cameraStream = null;
+let cameraActive = false;
+let showLandmarks = true;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -44,11 +54,6 @@ function drawRotatedImage(img, x, y, width, height, angle = 0) {
   ctx.drawImage(img, -width / 2, -height / 2, width, height);
   ctx.restore();
 }
-
-let faceLandmarker = null;
-let drawingUtils = null;
-let lastVideoTime = -1;
-let selectedFilter = "none";
 
 function extractIndicesFromConnections(connections) {
   const indices = new Set();
@@ -149,18 +154,26 @@ function updateFilterLabel() {
   currentFilterText.textContent = `Filtro selecionado: ${labels[selectedFilter]}`;
 }
 
+function updateCameraButton() {
+  cameraToggleBtn.textContent = cameraActive ? "Desligar câmara" : "Ligar câmara";
+}
+
+function updateLandmarksButton() {
+  landmarksToggleBtn.textContent = showLandmarks ? "Ocultar landmarks" : "Mostrar landmarks";
+}
+
 function resizeCanvas() {
-  canvas.width = video.videoWidth || video.clientWidth;
-  canvas.height = video.videoHeight || video.clientHeight;
+  canvas.width = video.videoWidth || video.clientWidth || canvas.width;
+  canvas.height = video.videoHeight || video.clientHeight || canvas.height;
 }
 
 async function startWebcam() {
-  const stream = await navigator.mediaDevices.getUserMedia({
+  cameraStream = await navigator.mediaDevices.getUserMedia({
     video: true,
     audio: false
   });
 
-  video.srcObject = stream;
+  video.srcObject = cameraStream;
 
   await new Promise((resolve) => {
     video.onloadedmetadata = () => {
@@ -170,7 +183,39 @@ async function startWebcam() {
   });
 
   resizeCanvas();
-  window.addEventListener("resize", resizeCanvas);
+  cameraActive = true;
+  lastVideoTime = -1;
+  updateCameraButton();
+  statusText.textContent = "Webcam ativa";
+}
+
+function stopWebcam() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+
+  video.srcObject = null;
+  cameraActive = false;
+  lastVideoTime = -1;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  updateCameraButton();
+  statusText.textContent = "Câmara desligada";
+}
+
+async function toggleCamera() {
+  if (cameraActive) {
+    stopWebcam();
+    return;
+  }
+
+  try {
+    statusText.textContent = "A iniciar webcam...";
+    await startWebcam();
+  } catch (error) {
+    console.error(error);
+    statusText.textContent = "Não foi possível iniciar a câmara";
+  }
 }
 
 async function createFaceLandmarker() {
@@ -238,10 +283,10 @@ function drawSimpleFilter(bounds, landmarks) {
     const ovalBounds = getBoundsFromPoints(ovalPoints);
 
     const hatX = eyesCenterX;
-    const hatY = ovalBounds.minY - ovalBounds.height * 0.10;
+    const hatY = ovalBounds.minY - ovalBounds.height * 0.04;
 
-    const hatWidth = ovalBounds.width * 1.15;
-    const hatHeight = hatWidth * 0.55;
+    const hatWidth = ovalBounds.width * 1.75;
+    const hatHeight = hatWidth * 0.60;
 
     drawRotatedImage(
       filterImages.hat,
@@ -257,8 +302,8 @@ function drawSimpleFilter(bounds, landmarks) {
     const glassesX = eyesCenterX;
     const glassesY = eyesCenterY;
 
-    const glassesWidth = eyesDistance * 2.2;
-    const glassesHeight = glassesWidth * 0.45;
+    const glassesWidth = eyesDistance * 4.2;
+    const glassesHeight = glassesWidth * 0.55;
 
     drawRotatedImage(
       filterImages.glasses,
@@ -280,7 +325,7 @@ function drawSimpleFilter(bounds, landmarks) {
     const maskX = lipsCenter.x;
     const maskY = lipsCenter.y + ovalBounds.height * 0.02;
 
-    const maskWidth = ovalBounds.width * 0.78;
+    const maskWidth = ovalBounds.width * 0.8;
     const maskHeight = maskWidth * 0.55;
 
     drawRotatedImage(
@@ -305,40 +350,42 @@ function drawResults(results) {
   statusText.textContent = "Rosto detetado";
 
   for (const landmarks of results.faceLandmarks) {
-    drawingUtils.drawConnectors(
-      landmarks,
-      FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-      { color: "rgba(180, 190, 255, 0.35)", lineWidth: 1 }
-    );
+    if (showLandmarks) {
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+        { color: "rgba(180, 190, 255, 0.35)", lineWidth: 1 }
+      );
 
-    drawingUtils.drawConnectors(
-      landmarks,
-      FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
-      { color: "#2f3dbd", lineWidth: 2 }
-    );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
+        { color: "#2f3dbd", lineWidth: 2 }
+      );
 
-    drawingUtils.drawConnectors(
-      landmarks,
-      FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-      { color: "#00aa88", lineWidth: 2 }
-    );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
+        { color: "#00aa88", lineWidth: 2 }
+      );
 
-    drawingUtils.drawConnectors(
-      landmarks,
-      FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-      { color: "#00aa88", lineWidth: 2 }
-    );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
+        { color: "#00aa88", lineWidth: 2 }
+      );
 
-    drawingUtils.drawConnectors(
-      landmarks,
-      FaceLandmarker.FACE_LANDMARKS_LIPS,
-      { color: "#cc4477", lineWidth: 2 }
-    );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LIPS,
+        { color: "#cc4477", lineWidth: 2 }
+      );
 
-    drawingUtils.drawLandmarks(landmarks, {
-      color: "#1f2a7a",
-      radius: 1.2
-    });
+      drawingUtils.drawLandmarks(landmarks, {
+        color: "#1f2a7a",
+        radius: 1.2
+      });
+    }
 
     const bounds = getFaceBounds(landmarks);
     drawSimpleFilter(bounds, landmarks);
@@ -346,7 +393,7 @@ function drawResults(results) {
 }
 
 function renderLoop() {
-  if (video.readyState >= 2 && faceLandmarker) {
+  if (cameraActive && video.readyState >= 2 && faceLandmarker) {
     if (video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
       const results = faceLandmarker.detectForVideo(video, performance.now());
@@ -366,20 +413,36 @@ filterButtons.forEach((button) => {
   });
 });
 
+cameraToggleBtn.addEventListener("click", async () => {
+  await toggleCamera();
+});
+
+landmarksToggleBtn.addEventListener("click", () => {
+  showLandmarks = !showLandmarks;
+  updateLandmarksButton();
+
+  if (!cameraActive) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+});
+
+window.addEventListener("resize", resizeCanvas);
+
 async function init() {
   try {
-    statusText.textContent = "A iniciar webcam...";
     updateFilterLabel();
-
-    await startWebcam();
+    updateCameraButton();
+    updateLandmarksButton();
 
     statusText.textContent = "A carregar deteção facial...";
     await createFaceLandmarker();
 
     statusText.textContent = "A carregar filtros...";
-      await loadFilterImages();
+    await loadFilterImages();
 
-    statusText.textContent = "Deteção facial ativa";
+    statusText.textContent = "A iniciar webcam...";
+    await startWebcam();
+
     renderLoop();
   } catch (error) {
     console.error(error);
