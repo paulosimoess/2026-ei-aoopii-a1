@@ -23,12 +23,8 @@
 
     <section class="controls-section">
       <h2>Filtros</h2>
-      <div class="controls">
-        <button class="filter-btn active" data-filter="none">Sem filtro</button>
-        <button class="filter-btn" data-filter="hat">Chapéu</button>
-        <button class="filter-btn" data-filter="glasses">Óculos</button>
-        <button class="filter-btn" data-filter="mask">Máscara</button>
-      </div>
+      <p class="catalog-hint">Podes selecionar vários filtros ao mesmo tempo.</p>
+      <div id="filtersCatalog" class="filters-catalog"></div>
 
       <div class="controls extra-controls">
         <button id="cameraToggleBtn" class="filter-btn">Desligar câmara</button>
@@ -38,7 +34,35 @@
       <div class="info-box">
         <h3>Estado atual</h3>
         <p id="currentFilter">Filtro selecionado: Sem filtro</p>
-        <p>Deteção de rosto e desenho de filtros em tempo real.</p>
+      </div>
+
+      <div class="suggestions-box">
+        <h3>Sugestões de filtros</h3>
+        <p class="suggestions-text">
+          Deixa aqui uma ideia de filtro que gostavas de usar na aplicação.
+        </p>
+
+        <textarea
+          id="suggestionInput"
+          class="suggestion-input"
+          placeholder="Exemplo: filtro de cão, coroa brilhante, barba, estrelas nos olhos..."
+          maxlength="120"
+        ></textarea>
+
+        <button id="submitSuggestionBtn" class="filter-btn">
+          Enviar sugestão
+        </button>
+
+        <button id="clearSuggestionsBtn" class="filter-btn">
+          Limpar sugestões
+        </button>
+
+        <p id="suggestionMessage" class="suggestion-message"></p>
+
+        <div class="suggestions-list-box">
+          <h4>Últimas sugestões</h4>
+          <ul id="suggestionsList" class="suggestions-list"></ul>
+        </div>
       </div>
     </section>
   </main>

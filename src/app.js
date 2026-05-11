@@ -9,16 +9,51 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
-const filterButtons = document.querySelectorAll(".filter-btn[data-filter]");
+const filterButtons = [];
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
 const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
+const suggestionInput = document.getElementById("suggestionInput");
+const submitSuggestionBtn = document.getElementById("submitSuggestionBtn");
+const suggestionMessage = document.getElementById("suggestionMessage");
+const suggestionsList = document.getElementById("suggestionsList");
+const clearSuggestionsBtn = document.getElementById("clearSuggestionsBtn");
 
 const filterImages = {};
+const filtersConfig = [
+  {
+    id: "none",
+    name: "Sem filtro",
+    thumbnail: null,
+    asset: null,
+    anchor: "none"
+  },
+  {
+    id: "hat",
+    name: "Chapéu",
+    thumbnail: "./assets/thumbnails/hat.png",
+    asset: "./assets/filters/hat.png",
+    anchor: "head"
+  },
+  {
+    id: "glasses",
+    name: "Óculos",
+    thumbnail: "./assets/thumbnails/glasses.png",
+    asset: "./assets/filters/glasses.png",
+    anchor: "eyes"
+  },
+  {
+    id: "mask",
+    name: "Máscara",
+    thumbnail: "./assets/thumbnails/mask.png",
+    asset: "./assets/filters/mask.png",
+    anchor: "mouth"
+  }
+];
 
 let faceLandmarker = null;
 let drawingUtils = null;
 let lastVideoTime = -1;
-let selectedFilter = "none";
+let selectedFilters = new Set();
 let cameraStream = null;
 let cameraActive = false;
 let showLandmarks = true;
@@ -33,15 +68,18 @@ function loadImage(src) {
 }
 
 async function loadFilterImages() {
-  const [hat, glasses, mask] = await Promise.all([
-    loadImage("./assets/hat.png"),
-    loadImage("./assets/glasses.png"),
-    loadImage("./assets/mask.png")
-  ]);
+  const filtersToLoad = filtersConfig.filter((filter) => filter.asset);
 
-  filterImages.hat = hat;
-  filterImages.glasses = glasses;
-  filterImages.mask = mask;
+  const loadedImages = await Promise.all(
+    filtersToLoad.map(async (filter) => {
+      const image = await loadImage(filter.asset);
+      return { id: filter.id, image };
+    })
+  );
+
+  loadedImages.forEach(({ id, image }) => {
+    filterImages[id] = image;
+  });
 }
 
 function drawRotatedImage(img, x, y, width, height, angle = 0) {
@@ -144,14 +182,79 @@ function getEyeCenters(landmarks) {
 }
 
 function updateFilterLabel() {
-  const labels = {
-    none: "Sem filtro",
-    hat: "Chapéu",
-    glasses: "Óculos",
-    mask: "Máscara"
-  };
+  if (selectedFilters.size === 0) {
+    currentFilterText.textContent = "Filtros selecionados: Sem filtro";
+    return;
+  }
 
-  currentFilterText.textContent = `Filtro selecionado: ${labels[selectedFilter]}`;
+  const selectedNames = filtersConfig
+    .filter((filter) => selectedFilters.has(filter.id))
+    .map((filter) => filter.name);
+
+  currentFilterText.textContent = `Filtros selecionados: ${selectedNames.join(" + ")}`;
+}
+
+function updateButtonSelection() {
+}
+
+function updateCatalogSelection() {
+  const cards = document.querySelectorAll(".filter-card");
+
+  cards.forEach((card) => {
+    const filterId = card.dataset.filter;
+
+    if (filterId === "none") {
+      card.classList.toggle("active", selectedFilters.size === 0);
+    } else {
+      card.classList.toggle("active", selectedFilters.has(filterId));
+    }
+  });
+}
+
+function toggleFilterSelection(filterId) {
+  if (filterId === "none") {
+    selectedFilters.clear();
+  } else {
+    if (selectedFilters.has(filterId)) {
+      selectedFilters.delete(filterId);
+    } else {
+      selectedFilters.add(filterId);
+    }
+  }
+
+  updateFilterLabel();
+  updateButtonSelection();
+  updateCatalogSelection();
+}
+
+function renderFiltersCatalog() {
+  filtersCatalog.innerHTML = "";
+
+  filtersConfig.forEach((filter) => {
+    const card = document.createElement("div");
+    card.className = "filter-card";
+    card.dataset.filter = filter.id;
+
+    if (filter.thumbnail) {
+      card.innerHTML = `
+        <img src="${filter.thumbnail}" alt="${filter.name}">
+        <div class="filter-card-name">${filter.name}</div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="filter-card-placeholder">🚫</div>
+        <div class="filter-card-name">${filter.name}</div>
+      `;
+    }
+
+    card.addEventListener("click", () => {
+      toggleFilterSelection(filter.id);
+    });
+
+    filtersCatalog.appendChild(card);
+  });
+
+  updateCatalogSelection();
 }
 
 function updateCameraButton() {
@@ -266,7 +369,7 @@ function getFaceBounds(landmarks) {
 }
 
 function drawSimpleFilter(bounds, landmarks) {
-  if (selectedFilter === "none") return;
+  if (selectedFilters.size === 0) return;
 
   const { leftEyeCenter, rightEyeCenter } = getEyeCenters(landmarks);
 
@@ -278,7 +381,7 @@ function drawSimpleFilter(bounds, landmarks) {
   const eyesCenterX = (leftEyeCenter.x + rightEyeCenter.x) / 2;
   const eyesCenterY = (leftEyeCenter.y + rightEyeCenter.y) / 2;
 
-  if (selectedFilter === "hat") {
+  if (selectedFilters.has("hat")) {
     const ovalPoints = getPixelPoints(landmarks, FACE_OVAL_INDICES);
     const ovalBounds = getBoundsFromPoints(ovalPoints);
 
@@ -286,7 +389,7 @@ function drawSimpleFilter(bounds, landmarks) {
     const hatY = ovalBounds.minY - ovalBounds.height * 0.04;
 
     const hatWidth = ovalBounds.width * 1.75;
-    const hatHeight = hatWidth * 0.60;
+    const hatHeight = hatWidth * 0.70;
 
     drawRotatedImage(
       filterImages.hat,
@@ -298,7 +401,7 @@ function drawSimpleFilter(bounds, landmarks) {
     );
   }
 
-  if (selectedFilter === "glasses") {
+  if (selectedFilters.has("glasses")) {
     const glassesX = eyesCenterX;
     const glassesY = eyesCenterY;
 
@@ -315,7 +418,7 @@ function drawSimpleFilter(bounds, landmarks) {
     );
   }
 
-  if (selectedFilter === "mask") {
+  if (selectedFilters.has("mask")) {
     const lipsPoints = getPixelPoints(landmarks, LIPS_INDICES);
     const ovalPoints = getPixelPoints(landmarks, FACE_OVAL_INDICES);
 
@@ -404,15 +507,6 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
 }
 
-filterButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    filterButtons.forEach((btn) => btn.classList.remove("active"));
-    button.classList.add("active");
-    selectedFilter = button.dataset.filter;
-    updateFilterLabel();
-  });
-});
-
 cameraToggleBtn.addEventListener("click", async () => {
   await toggleCamera();
 });
@@ -428,17 +522,83 @@ landmarksToggleBtn.addEventListener("click", () => {
 
 window.addEventListener("resize", resizeCanvas);
 
+function getStoredSuggestions() {
+  const savedSuggestions = localStorage.getItem("filterSuggestions");
+  return savedSuggestions ? JSON.parse(savedSuggestions) : [];
+}
+
+function saveSuggestions(suggestions) {
+  localStorage.setItem("filterSuggestions", JSON.stringify(suggestions));
+}
+
+function renderSuggestions() {
+  const suggestions = getStoredSuggestions();
+  suggestionsList.innerHTML = "";
+
+  if (suggestions.length === 0) {
+    suggestionsList.innerHTML = "<li>Ainda não existem sugestões.</li>";
+    return;
+  }
+
+  suggestions.slice().reverse().forEach((suggestion) => {
+    const li = document.createElement("li");
+    li.textContent = suggestion;
+    suggestionsList.appendChild(li);
+  });
+}
+
+function submitSuggestion() {
+  const suggestion = suggestionInput.value.trim();
+
+  if (!suggestion) {
+    suggestionMessage.textContent = "Escreve uma sugestão antes de enviar.";
+    return;
+  }
+
+  const suggestions = getStoredSuggestions();
+  suggestions.push(suggestion);
+
+  saveSuggestions(suggestions);
+  renderSuggestions();
+
+  suggestionInput.value = "";
+  suggestionMessage.textContent = "Sugestão enviada com sucesso.";
+}
+
+submitSuggestionBtn.addEventListener("click", () => {
+  submitSuggestion();
+});
+
+suggestionInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.ctrlKey) {
+    submitSuggestion();
+  }
+});
+
+function clearSuggestions() {
+  localStorage.removeItem("filterSuggestions");
+  renderSuggestions();
+  suggestionMessage.textContent = "Sugestões removidas com sucesso.";
+}
+
+clearSuggestionsBtn.addEventListener("click", () => {
+  clearSuggestions();
+});
+
 async function init() {
   try {
     updateFilterLabel();
     updateCameraButton();
     updateLandmarksButton();
+    renderSuggestions();
 
     statusText.textContent = "A carregar deteção facial...";
     await createFaceLandmarker();
 
     statusText.textContent = "A carregar filtros...";
     await loadFilterImages();
+
+    renderFiltersCatalog();
 
     statusText.textContent = "A iniciar webcam...";
     await startWebcam();
