@@ -14,6 +14,7 @@ const filtersCatalog = document.getElementById("filtersCatalog");
 const favoriteFiltersCatalog = document.getElementById("favoriteFiltersCatalog");
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
 const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
 const suggestionInput = document.getElementById("suggestionInput");
 const submitSuggestionBtn = document.getElementById("submitSuggestionBtn");
 const suggestionMessage = document.getElementById("suggestionMessage");
@@ -211,6 +212,17 @@ function toggleFavoriteFilter(filterId) {
 
   renderFiltersCatalog();
   renderFavoriteFiltersCatalog();
+}
+
+function applyTheme(theme) {
+  document.body.classList.toggle("dark-mode", theme === "dark");
+  localStorage.setItem("themeMode", theme);
+  themeToggleBtn.textContent = theme === "dark" ? "Modo claro" : "Modo escuro";
+}
+
+function toggleTheme() {
+  const isDark = document.body.classList.contains("dark-mode");
+  applyTheme(isDark ? "light" : "dark");
 }
 
 function updateFilterLabel() {
@@ -614,6 +626,10 @@ landmarksToggleBtn.addEventListener("click", () => {
   }
 });
 
+themeToggleBtn.addEventListener("click", () => {
+  toggleTheme();
+});
+
 window.addEventListener("resize", resizeCanvas);
 
 function getStoredSuggestions() {
@@ -681,6 +697,9 @@ clearSuggestionsBtn.addEventListener("click", () => {
 
 async function init() {
   try {
+    const savedTheme = localStorage.getItem("themeMode") || "light";
+    applyTheme(savedTheme);
+
     updateFilterLabel();
     updateCameraButton();
     updateLandmarksButton();
