@@ -11,6 +11,7 @@ const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
 const filterButtons = [];
 const filtersCatalog = document.getElementById("filtersCatalog");
+const favoriteFiltersCatalog = document.getElementById("favoriteFiltersCatalog");
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
 const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
 const suggestionInput = document.getElementById("suggestionInput");
@@ -209,6 +210,7 @@ function toggleFavoriteFilter(filterId) {
   }
 
   renderFiltersCatalog();
+  renderFavoriteFiltersCatalog();
 }
 
 function updateFilterLabel() {
@@ -296,6 +298,54 @@ function renderFiltersCatalog() {
     });
 
     filtersCatalog.appendChild(card);
+  });
+
+  updateCatalogSelection();
+}
+
+function renderFavoriteFiltersCatalog() {
+  favoriteFiltersCatalog.innerHTML = "";
+
+  const favoriteIds = getFavoriteFilters();
+  const favoriteFilters = filtersConfig.filter((filter) =>
+    favoriteIds.includes(filter.id)
+  );
+
+  if (favoriteFilters.length === 0) {
+    favoriteFiltersCatalog.innerHTML = `
+      <div class="filter-card">
+        <div class="filter-card-placeholder">☆</div>
+        <div class="filter-card-name">Sem favoritos</div>
+      </div>
+    `;
+    return;
+  }
+
+  favoriteFilters.forEach((filter) => {
+    const card = document.createElement("div");
+    card.className = "filter-card";
+    card.dataset.filter = filter.id;
+
+    card.innerHTML = `
+      <button class="favorite active" data-favorite="${filter.id}" title="Remover dos favoritos">★</button>
+      <img src="${filter.thumbnail}" alt="${filter.name}">
+      <div class="filter-card-name">${filter.name}</div>
+    `;
+
+    const favoriteButton = card.querySelector("[data-favorite]");
+
+    if (favoriteButton) {
+      favoriteButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleFavoriteFilter(filter.id);
+      });
+    }
+
+    card.addEventListener("click", () => {
+      toggleFilterSelection(filter.id);
+    });
+
+    favoriteFiltersCatalog.appendChild(card);
   });
 
   updateCatalogSelection();
@@ -643,6 +693,7 @@ async function init() {
     await loadFilterImages();
 
     renderFiltersCatalog();
+    renderFavoriteFiltersCatalog();
 
     statusText.textContent = "A iniciar webcam...";
     await startWebcam();
