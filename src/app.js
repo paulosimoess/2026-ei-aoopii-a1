@@ -10,6 +10,7 @@ const ctx = canvas.getContext("2d");
 const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
 const filterButtons = [];
+const filtersCatalog = document.getElementById("filtersCatalog");
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
 const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
 const suggestionInput = document.getElementById("suggestionInput");
@@ -181,6 +182,35 @@ function getEyeCenters(landmarks) {
   };
 }
 
+function getFavoriteFilters() {
+  const savedFavorites = localStorage.getItem("favoriteFilters");
+  return savedFavorites ? JSON.parse(savedFavorites) : [];
+}
+
+function saveFavoriteFilters(favorites) {
+  localStorage.setItem("favoriteFilters", JSON.stringify(favorites));
+}
+
+function isFavoriteFilter(filterId) {
+  return getFavoriteFilters().includes(filterId);
+}
+
+function toggleFavoriteFilter(filterId) {
+  if (filterId === "none") return;
+
+  const favorites = getFavoriteFilters();
+
+  if (favorites.includes(filterId)) {
+    const updatedFavorites = favorites.filter((id) => id !== filterId);
+    saveFavoriteFilters(updatedFavorites);
+  } else {
+    favorites.push(filterId);
+    saveFavoriteFilters(favorites);
+  }
+
+  renderFiltersCatalog();
+}
+
 function updateFilterLabel() {
   if (selectedFilters.size === 0) {
     currentFilterText.textContent = "Filtros selecionados: Sem filtro";
@@ -235,8 +265,13 @@ function renderFiltersCatalog() {
     card.className = "filter-card";
     card.dataset.filter = filter.id;
 
+    const favoriteClass = isFavoriteFilter(filter.id)
+      ? "favorite active"
+      : "favorite";
+
     if (filter.thumbnail) {
       card.innerHTML = `
+        <button class="${favoriteClass}" data-favorite="${filter.id}" title="Marcar como favorito">★</button>
         <img src="${filter.thumbnail}" alt="${filter.name}">
         <div class="filter-card-name">${filter.name}</div>
       `;
@@ -245,6 +280,15 @@ function renderFiltersCatalog() {
         <div class="filter-card-placeholder">🚫</div>
         <div class="filter-card-name">${filter.name}</div>
       `;
+    }
+
+    const favoriteButton = card.querySelector("[data-favorite]");
+
+    if (favoriteButton) {
+      favoriteButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleFavoriteFilter(filter.id);
+      });
     }
 
     card.addEventListener("click", () => {
