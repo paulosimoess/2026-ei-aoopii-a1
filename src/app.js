@@ -20,6 +20,10 @@ const submitSuggestionBtn = document.getElementById("submitSuggestionBtn");
 const suggestionMessage = document.getElementById("suggestionMessage");
 const suggestionsList = document.getElementById("suggestionsList");
 const clearSuggestionsBtn = document.getElementById("clearSuggestionsBtn");
+const capturePhotoBtn = document.getElementById("capturePhotoBtn");
+const downloadPhotoBtn = document.getElementById("downloadPhotoBtn");
+const photoPreview = document.getElementById("photoPreview");
+const photoMessage = document.getElementById("photoMessage");
 
 const filterImages = {};
 const filtersConfig = [
@@ -60,6 +64,7 @@ let selectedFilters = new Set();
 let cameraStream = null;
 let cameraActive = false;
 let showLandmarks = true;
+let capturedPhotoDataUrl = "";
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -693,6 +698,65 @@ function clearSuggestions() {
 
 clearSuggestionsBtn.addEventListener("click", () => {
   clearSuggestions();
+});
+
+function capturePhoto() {
+  if (!cameraActive || !video.srcObject) {
+    photoMessage.textContent = "Liga a câmara antes de tirar uma foto.";
+    return;
+  }
+
+  const width = video.videoWidth || canvas.width;
+  const height = video.videoHeight || canvas.height;
+
+  if (!width || !height) {
+    photoMessage.textContent = "Não foi possível capturar a foto.";
+    return;
+  }
+
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = width;
+  exportCanvas.height = height;
+
+  const exportCtx = exportCanvas.getContext("2d");
+
+  // desenhar vídeo espelhado para ficar igual ao que aparece na app
+  exportCtx.save();
+  exportCtx.translate(width, 0);
+  exportCtx.scale(-1, 1);
+  exportCtx.drawImage(video, 0, 0, width, height);
+  exportCtx.restore();
+
+  // desenhar overlay do canvas também espelhado
+  exportCtx.save();
+  exportCtx.translate(width, 0);
+  exportCtx.scale(-1, 1);
+  exportCtx.drawImage(canvas, 0, 0, width, height);
+  exportCtx.restore();
+
+  capturedPhotoDataUrl = exportCanvas.toDataURL("image/png");
+
+  photoPreview.src = capturedPhotoDataUrl;
+  photoPreview.style.display = "block";
+  photoMessage.textContent = "Foto capturada com sucesso.";
+  downloadPhotoBtn.disabled = false;
+}
+
+function downloadPhoto() {
+  if (!capturedPhotoDataUrl) return;
+
+  const link = document.createElement("a");
+  link.href = capturedPhotoDataUrl;
+  link.download = `ar-face-filters-${Date.now()}.png`;
+  link.click();
+}
+
+capturePhotoBtn.addEventListener("click", () => {
+  capturePhoto();
+});
+
+downloadPhotoBtn.addEventListener("click", () => {
+  downloadPhoto();
 });
 
 async function init() {
