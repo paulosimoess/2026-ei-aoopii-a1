@@ -24,6 +24,8 @@ const capturePhotoBtn = document.getElementById("capturePhotoBtn");
 const downloadPhotoBtn = document.getElementById("downloadPhotoBtn");
 const photoPreview = document.getElementById("photoPreview");
 const photoMessage = document.getElementById("photoMessage");
+const filtersPrevBtn = document.getElementById("filtersPrevBtn");
+const filtersNextBtn = document.getElementById("filtersNextBtn");
 
 const filterImages = {};
 const filtersConfig = [
@@ -757,6 +759,22 @@ capturePhotoBtn.addEventListener("click", () => {
 
 downloadPhotoBtn.addEventListener("click", () => {
   downloadPhoto();
+});
+
+function scrollFilters(direction) {
+  const scrollAmount = 140;
+  filtersCatalog.scrollBy({
+    left: direction * scrollAmount,
+    behavior: "smooth"
+  });
+}
+
+filtersPrevBtn.addEventListener("click", () => {
+  scrollFilters(-1);
+});
+
+filtersNextBtn.addEventListener("click", () => {
+  scrollFilters(1);
 });
 
 async function init() {

@@ -7,39 +7,66 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>AR Face Filters</h1>
-    <p>Aplicação de filtros faciais em tempo real com webcam.</p>
+  <header class="app-header">
+    <div class="header-content">
+      <div class="header-text">
+        <h1>AR Face Filters</h1>
+        <p>Aplicação de filtros faciais em tempo real com webcam.</p>
+      </div>
+
+      <button id="themeToggleBtn" class="theme-toggle-btn">Modo escuro</button>
+    </div>
   </header>
 
-  <button id="themeToggleBtn" class="filter-btn">Modo escuro</button>
-
-  <main>
+  <main class="app-layout">
     <section class="viewer-section">
-      <div class="viewer">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas"></canvas>
-        <div id="status" class="status">A iniciar webcam...</div>
+      <div class="viewer-shell">
+        <div class="viewer">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="canvas"></canvas>
+          <div id="status" class="status">A iniciar webcam...</div>
+
+          <div class="viewer-overlay viewer-overlay-top">
+            <div class="overlay-panel overlay-favorites">
+              <div class="overlay-title-row">
+                <h3>Favoritos</h3>
+              </div>
+              <div id="favoriteFiltersCatalog" class="filters-catalog overlay-catalog"></div>
+            </div>
+          </div>
+
+          <div class="viewer-overlay viewer-overlay-bottom">
+            <div class="overlay-panel overlay-filters">
+              <button id="filtersPrevBtn" class="carousel-arrow left">‹</button>
+
+              <div class="filters-carousel-wrapper">
+                <div class="overlay-title-row">
+                  <h3>Filtros</h3>
+                </div>
+
+                <div id="filtersCatalog" class="filters-catalog overlay-catalog overlay-catalog-center"></div>
+              </div>
+
+              <button id="filtersNextBtn" class="carousel-arrow right">›</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="controls-section">
-      <h2>Favoritos</h2>
-      <p class="catalog-hint">Aqui aparecem os filtros que marcaste como favoritos.</p>
-      <div id="favoriteFiltersCatalog" class="filters-catalog"></div>
+    <aside class="controls-section">
+      <div class="sidebar-block">
+        <h2>Controlos</h2>
 
-      <h2>Filtros</h2>
-      <p class="catalog-hint">Podes selecionar vários filtros ao mesmo tempo.</p>
-      <div id="filtersCatalog" class="filters-catalog"></div>
+        <div class="controls extra-controls vertical-controls">
+          <button id="cameraToggleBtn" class="filter-btn">Desligar câmara</button>
+          <button id="landmarksToggleBtn" class="filter-btn">Ocultar landmarks</button>
+        </div>
 
-      <div class="controls extra-controls">
-        <button id="cameraToggleBtn" class="filter-btn">Desligar câmara</button>
-        <button id="landmarksToggleBtn" class="filter-btn">Ocultar landmarks</button>
-      </div>
-
-      <div class="controls photo-controls">
-        <button id="capturePhotoBtn" class="filter-btn">Tirar foto</button>
-        <button id="downloadPhotoBtn" class="filter-btn" disabled>Descarregar foto</button>
+        <div class="controls photo-controls vertical-controls">
+          <button id="capturePhotoBtn" class="filter-btn">Tirar foto</button>
+          <button id="downloadPhotoBtn" class="filter-btn" disabled>Descarregar foto</button>
+        </div>
       </div>
 
       <div class="photo-preview-box">
@@ -66,13 +93,15 @@
           maxlength="120"
         ></textarea>
 
-        <button id="submitSuggestionBtn" class="filter-btn">
-          Enviar sugestão
-        </button>
+        <div class="suggestion-actions">
+          <button id="submitSuggestionBtn" class="filter-btn">
+            Enviar sugestão
+          </button>
 
-        <button id="clearSuggestionsBtn" class="filter-btn">
-          Limpar sugestões
-        </button>
+          <button id="clearSuggestionsBtn" class="filter-btn">
+            Limpar sugestões
+          </button>
+        </div>
 
         <p id="suggestionMessage" class="suggestion-message"></p>
 
@@ -81,7 +110,7 @@
           <ul id="suggestionsList" class="suggestions-list"></ul>
         </div>
       </div>
-    </section>
+    </aside>
   </main>
 
   <script type="module" src="app.js"></script>
