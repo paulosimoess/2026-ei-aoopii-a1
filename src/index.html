@@ -27,15 +27,23 @@
           <div id="status" class="status">A iniciar webcam...</div>
 
           <div class="viewer-overlay viewer-overlay-top">
-            <div class="overlay-panel overlay-favorites">
-              <div class="overlay-title-row">
-                <h3>Favoritos</h3>
+            <div class="top-left-tools">
+              <div class="overlay-panel overlay-favorites">
+                <div class="overlay-title-row">
+                  <h3>Favoritos</h3>
+                </div>
+                <div id="favoriteFiltersCatalog" class="filters-catalog overlay-catalog"></div>
               </div>
-              <div id="favoriteFiltersCatalog" class="filters-catalog overlay-catalog"></div>
+
+              <button id="capturePhotoBtn" class="capture-top-btn" title="Tirar foto">📸</button>
             </div>
           </div>
 
           <div class="viewer-overlay viewer-overlay-bottom">
+            <div class="filters-toolbar">
+              <div id="filtersCategories" class="filters-categories"></div>
+            </div>
+
             <div class="overlay-panel overlay-filters">
               <button id="filtersPrevBtn" class="carousel-arrow left">‹</button>
 
@@ -44,7 +52,7 @@
                   <h3>Filtros</h3>
                 </div>
 
-                <div id="filtersCatalog" class="filters-catalog overlay-catalog overlay-catalog-center"></div>
+                <div id="filtersCatalog" class="filters-catalog overlay-catalog"></div>
               </div>
 
               <button id="filtersNextBtn" class="carousel-arrow right">›</button>
@@ -62,11 +70,10 @@
           <button id="cameraToggleBtn" class="filter-btn">Desligar câmara</button>
           <button id="landmarksToggleBtn" class="filter-btn">Ocultar landmarks</button>
         </div>
-
-        <div class="controls photo-controls vertical-controls">
-          <button id="capturePhotoBtn" class="filter-btn">Tirar foto</button>
-          <button id="downloadPhotoBtn" class="filter-btn" disabled>Descarregar foto</button>
-        </div>
+      </div>
+      
+      <div class="controls photo-controls">
+        <button id="downloadPhotoBtn" class="filter-btn" disabled>Descarregar foto</button>
       </div>
 
       <div class="photo-preview-box">

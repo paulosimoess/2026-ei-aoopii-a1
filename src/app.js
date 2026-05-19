@@ -26,6 +26,7 @@ const photoPreview = document.getElementById("photoPreview");
 const photoMessage = document.getElementById("photoMessage");
 const filtersPrevBtn = document.getElementById("filtersPrevBtn");
 const filtersNextBtn = document.getElementById("filtersNextBtn");
+const filtersCategories = document.getElementById("filtersCategories");
 
 const filterImages = {};
 const filtersConfig = [
@@ -34,29 +35,42 @@ const filtersConfig = [
     name: "Sem filtro",
     thumbnail: null,
     asset: null,
-    anchor: "none"
+    anchor: "none",
+    category: "all"
   },
   {
     id: "hat",
     name: "Chapéu",
     thumbnail: "./assets/thumbnails/hat.png",
     asset: "./assets/filters/hat.png",
-    anchor: "head"
+    anchor: "head",
+    category: "halloween"
   },
   {
     id: "glasses",
     name: "Óculos",
     thumbnail: "./assets/thumbnails/glasses.png",
     asset: "./assets/filters/glasses.png",
-    anchor: "eyes"
+    anchor: "eyes",
+    category: "fun"
   },
   {
     id: "mask",
     name: "Máscara",
     thumbnail: "./assets/thumbnails/mask.png",
     asset: "./assets/filters/mask.png",
-    anchor: "mouth"
+    anchor: "mouth",
+    category: "halloween"
   }
+];
+
+const categoriesConfig = [
+  { id: "all", label: "Todos" },
+  { id: "animals", label: "Animais" },
+  { id: "christmas", label: "Natal" },
+  { id: "easter", label: "Páscoa" },
+  { id: "halloween", label: "Halloween" },
+  { id: "fun", label: "Divertidos" }
 ];
 
 let faceLandmarker = null;
@@ -67,6 +81,7 @@ let cameraStream = null;
 let cameraActive = false;
 let showLandmarks = true;
 let capturedPhotoDataUrl = "";
+let selectedCategory = "all";
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -278,10 +293,53 @@ function toggleFilterSelection(filterId) {
   updateCatalogSelection();
 }
 
+function updateCategorySelection() {
+  const buttons = document.querySelectorAll(".category-chip");
+
+  buttons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.category === selectedCategory);
+  });
+}
+
+function selectCategory(categoryId) {
+  selectedCategory = categoryId;
+  renderFiltersCatalog();
+  updateCategorySelection();
+}
+
+function renderCategoriesBar() {
+  filtersCategories.innerHTML = "";
+
+  categoriesConfig.forEach((category) => {
+    const button = document.createElement("button");
+    button.className = "category-chip";
+    button.dataset.category = category.id;
+    button.textContent = category.label;
+
+    button.addEventListener("click", () => {
+      selectCategory(category.id);
+    });
+
+    filtersCategories.appendChild(button);
+  });
+
+  updateCategorySelection();
+}
+
+function getVisibleFilters() {
+  if (selectedCategory === "all") {
+    return filtersConfig;
+  }
+
+  return filtersConfig.filter(
+    (filter) => filter.id === "none" || filter.category === selectedCategory
+  );
+}
+
 function renderFiltersCatalog() {
   filtersCatalog.innerHTML = "";
 
-  filtersConfig.forEach((filter) => {
+  getVisibleFilters().forEach((filter) => {
     const card = document.createElement("div");
     card.className = "filter-card";
     card.dataset.filter = filter.id;
@@ -763,6 +821,7 @@ downloadPhotoBtn.addEventListener("click", () => {
 
 function scrollFilters(direction) {
   const scrollAmount = 140;
+
   filtersCatalog.scrollBy({
     left: direction * scrollAmount,
     behavior: "smooth"
@@ -793,6 +852,7 @@ async function init() {
     statusText.textContent = "A carregar filtros...";
     await loadFilterImages();
 
+    renderCategoriesBar();
     renderFiltersCatalog();
     renderFavoriteFiltersCatalog();
 

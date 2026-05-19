@@ -214,14 +214,21 @@ canvas {
 
 .viewer-overlay-top {
   top: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .viewer-overlay-bottom {
-  bottom: 16px;
+  bottom: 20px;
+  left: 12px;
+  right: 12px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
 .overlay-panel {
@@ -257,10 +264,10 @@ canvas {
 .overlay-filters {
   width: 100%;
   max-width: 760px;
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) 46px;
-  align-items: center;
-  gap: 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -347,6 +354,9 @@ canvas {
   -webkit-backdrop-filter: blur(6px);
   transition: 0.2s ease;
   pointer-events: auto;
+  flex: 0 0 42px;
+  align-self: flex-end;
+  margin-bottom: 42px;
 }
 
 .carousel-arrow:hover {
@@ -616,6 +626,82 @@ canvas {
   color: var(--hint-color);
 }
 
+.filters-toolbar {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2px;
+  pointer-events: auto;
+}
+
+.filters-categories {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+
+.filters-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.category-chip {
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: 0.2s ease;
+}
+
+.category-chip:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.category-chip.active {
+  background: white;
+  color: #1f2a7a;
+}
+
+.top-left-tools {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: auto;
+}
+
+.capture-top-btn {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 18px;
+  background: rgba(47, 61, 189, 0.96);
+  color: white;
+  cursor: pointer;
+  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  transition: 0.2s ease;
+}
+
+.capture-top-btn:hover {
+  transform: scale(1.05);
+  background: rgba(35, 48, 160, 0.98);
+}
+
 @media (max-width: 1100px) {
   .app-layout {
     grid-template-columns: 1fr;
@@ -660,5 +746,61 @@ canvas {
   .filter-card img,
   .filter-card-placeholder {
     height: 72px;
-  }
+  }  
+}
+
+/* FORÇAR o catálogo dentro da câmara a ficar horizontal */
+.overlay-catalog.filters-catalog {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 2px 8px;
+}
+
+.overlay-catalog.filters-catalog::-webkit-scrollbar {
+  display: none;
+}
+
+.overlay-catalog.filters-catalog .filter-card {
+  flex: 0 0 104px;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+}
+
+.overlay-catalog.filters-catalog .filter-card img,
+.overlay-catalog.filters-catalog .filter-card-placeholder {
+  height: 68px;
+}
+
+.filters-carousel-wrapper {
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.overlay-filters {
+  width: 100%;
+  max-width: 760px;
+  display: grid;
+  grid-template-columns: 42px auto 42px;
+  justify-content: center;
+  align-items: end;
+  gap: 16px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
