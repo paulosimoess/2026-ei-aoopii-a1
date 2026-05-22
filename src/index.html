@@ -35,7 +35,14 @@
                 <div id="favoriteFiltersCatalog" class="filters-catalog overlay-catalog"></div>
               </div>
 
-              <button id="capturePhotoBtn" class="capture-top-btn" title="Tirar foto">📸</button>
+              <div class="top-right-actions">
+                <button id="capturePhotoBtn" class="capture-top-btn" title="Tirar foto">
+                  <span>📸</span>
+                </button>
+                <button id="downloadPhotoTopBtn" class="capture-top-btn" title="Transferir imagem" disabled>
+                  <span>📤</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -70,10 +77,6 @@
           <button id="cameraToggleBtn" class="filter-btn">Desligar câmara</button>
           <button id="landmarksToggleBtn" class="filter-btn">Ocultar landmarks</button>
         </div>
-      </div>
-      
-      <div class="controls photo-controls">
-        <button id="downloadPhotoBtn" class="filter-btn" disabled>Descarregar foto</button>
       </div>
 
       <div class="photo-preview-box">

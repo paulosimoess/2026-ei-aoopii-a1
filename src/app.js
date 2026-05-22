@@ -4,12 +4,15 @@ import {
   DrawingUtils
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
 
+import { filtersConfig, categoriesConfig } from "./js/config/filters-data.js";
+import { getFaceBounds } from "./js/core/face-utils.js";
+import { loadFilterImages, drawSimpleFilter } from "./js/render/filters-renderer.js";
+
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
-const filterButtons = [];
 const filtersCatalog = document.getElementById("filtersCatalog");
 const favoriteFiltersCatalog = document.getElementById("favoriteFiltersCatalog");
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
@@ -27,52 +30,9 @@ const photoMessage = document.getElementById("photoMessage");
 const filtersPrevBtn = document.getElementById("filtersPrevBtn");
 const filtersNextBtn = document.getElementById("filtersNextBtn");
 const filtersCategories = document.getElementById("filtersCategories");
+const downloadPhotoTopBtn = document.getElementById("downloadPhotoTopBtn");
 
-const filterImages = {};
-const filtersConfig = [
-  {
-    id: "none",
-    name: "Sem filtro",
-    thumbnail: null,
-    asset: null,
-    anchor: "none",
-    category: "all"
-  },
-  {
-    id: "hat",
-    name: "Chapéu",
-    thumbnail: "./assets/thumbnails/hat.png",
-    asset: "./assets/filters/hat.png",
-    anchor: "head",
-    category: "halloween"
-  },
-  {
-    id: "glasses",
-    name: "Óculos",
-    thumbnail: "./assets/thumbnails/glasses.png",
-    asset: "./assets/filters/glasses.png",
-    anchor: "eyes",
-    category: "fun"
-  },
-  {
-    id: "mask",
-    name: "Máscara",
-    thumbnail: "./assets/thumbnails/mask.png",
-    asset: "./assets/filters/mask.png",
-    anchor: "mouth",
-    category: "halloween"
-  }
-];
-
-const categoriesConfig = [
-  { id: "all", label: "Todos" },
-  { id: "animals", label: "Animais" },
-  { id: "christmas", label: "Natal" },
-  { id: "easter", label: "Páscoa" },
-  { id: "halloween", label: "Halloween" },
-  { id: "fun", label: "Divertidos" }
-];
-
+let filterImages = {};
 let faceLandmarker = null;
 let drawingUtils = null;
 let lastVideoTime = -1;
@@ -82,129 +42,6 @@ let cameraActive = false;
 let showLandmarks = true;
 let capturedPhotoDataUrl = "";
 let selectedCategory = "all";
-
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Erro ao carregar imagem: ${src}`));
-    img.src = src;
-  });
-}
-
-async function loadFilterImages() {
-  const filtersToLoad = filtersConfig.filter((filter) => filter.asset);
-
-  const loadedImages = await Promise.all(
-    filtersToLoad.map(async (filter) => {
-      const image = await loadImage(filter.asset);
-      return { id: filter.id, image };
-    })
-  );
-
-  loadedImages.forEach(({ id, image }) => {
-    filterImages[id] = image;
-  });
-}
-
-function drawRotatedImage(img, x, y, width, height, angle = 0) {
-  if (!img) return;
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(1, -1);
-  ctx.rotate(angle);
-  ctx.drawImage(img, -width / 2, -height / 2, width, height);
-  ctx.restore();
-}
-
-function extractIndicesFromConnections(connections) {
-  const indices = new Set();
-
-  for (const connection of connections) {
-    if (Array.isArray(connection)) {
-      indices.add(connection[0]);
-      indices.add(connection[1]);
-    } else {
-      indices.add(connection.start);
-      indices.add(connection.end);
-    }
-  }
-
-  return [...indices];
-}
-
-const LEFT_EYE_INDICES = extractIndicesFromConnections(
-  FaceLandmarker.FACE_LANDMARKS_LEFT_EYE
-);
-
-const RIGHT_EYE_INDICES = extractIndicesFromConnections(
-  FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE
-);
-
-const LIPS_INDICES = extractIndicesFromConnections(
-  FaceLandmarker.FACE_LANDMARKS_LIPS
-);
-
-const FACE_OVAL_INDICES = extractIndicesFromConnections(
-  FaceLandmarker.FACE_LANDMARKS_FACE_OVAL
-);
-
-function getPixelPoints(landmarks, indices) {
-  return indices.map((index) => ({
-    x: landmarks[index].x * canvas.width,
-    y: landmarks[index].y * canvas.height
-  }));
-}
-
-function getCenterFromPoints(points) {
-  const total = points.reduce(
-    (acc, point) => {
-      acc.x += point.x;
-      acc.y += point.y;
-      return acc;
-    },
-    { x: 0, y: 0 }
-  );
-
-  return {
-    x: total.x / points.length,
-    y: total.y / points.length
-  };
-}
-
-function getBoundsFromPoints(points) {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  for (const point of points) {
-    if (point.x < minX) minX = point.x;
-    if (point.y < minY) minY = point.y;
-    if (point.x > maxX) maxX = point.x;
-    if (point.y > maxY) maxY = point.y;
-  }
-
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    width: maxX - minX,
-    height: maxY - minY
-  };
-}
-
-function getEyeCenters(landmarks) {
-  const leftEyePoints = getPixelPoints(landmarks, LEFT_EYE_INDICES);
-  const rightEyePoints = getPixelPoints(landmarks, RIGHT_EYE_INDICES);
-
-  return {
-    leftEyeCenter: getCenterFromPoints(leftEyePoints),
-    rightEyeCenter: getCenterFromPoints(rightEyePoints)
-  };
-}
 
 function getFavoriteFilters() {
   const savedFavorites = localStorage.getItem("favoriteFilters");
@@ -260,9 +97,6 @@ function updateFilterLabel() {
   currentFilterText.textContent = `Filtros selecionados: ${selectedNames.join(" + ")}`;
 }
 
-function updateButtonSelection() {
-}
-
 function updateCatalogSelection() {
   const cards = document.querySelectorAll(".filter-card");
 
@@ -289,7 +123,6 @@ function toggleFilterSelection(filterId) {
   }
 
   updateFilterLabel();
-  updateButtonSelection();
   updateCatalogSelection();
 }
 
@@ -513,106 +346,6 @@ async function createFaceLandmarker() {
   drawingUtils = new DrawingUtils(ctx);
 }
 
-function getFaceBounds(landmarks) {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  for (const point of landmarks) {
-    const x = point.x * canvas.width;
-    const y = point.y * canvas.height;
-
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-  }
-
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    width: maxX - minX,
-    height: maxY - minY
-  };
-}
-
-function drawSimpleFilter(bounds, landmarks) {
-  if (selectedFilters.size === 0) return;
-
-  const { leftEyeCenter, rightEyeCenter } = getEyeCenters(landmarks);
-
-  const dx = rightEyeCenter.x - leftEyeCenter.x;
-  const dy = rightEyeCenter.y - leftEyeCenter.y;
-  const angle = -Math.atan2(dy, dx);
-  const eyesDistance = Math.hypot(dx, dy);
-
-  const eyesCenterX = (leftEyeCenter.x + rightEyeCenter.x) / 2;
-  const eyesCenterY = (leftEyeCenter.y + rightEyeCenter.y) / 2;
-
-  if (selectedFilters.has("hat")) {
-    const ovalPoints = getPixelPoints(landmarks, FACE_OVAL_INDICES);
-    const ovalBounds = getBoundsFromPoints(ovalPoints);
-
-    const hatX = eyesCenterX;
-    const hatY = ovalBounds.minY - ovalBounds.height * 0.04;
-
-    const hatWidth = ovalBounds.width * 1.75;
-    const hatHeight = hatWidth * 0.70;
-
-    drawRotatedImage(
-      filterImages.hat,
-      hatX,
-      hatY,
-      hatWidth,
-      hatHeight,
-      angle
-    );
-  }
-
-  if (selectedFilters.has("glasses")) {
-    const glassesX = eyesCenterX;
-    const glassesY = eyesCenterY;
-
-    const glassesWidth = eyesDistance * 4.2;
-    const glassesHeight = glassesWidth * 0.55;
-
-    drawRotatedImage(
-      filterImages.glasses,
-      glassesX,
-      glassesY,
-      glassesWidth,
-      glassesHeight,
-      angle
-    );
-  }
-
-  if (selectedFilters.has("mask")) {
-    const lipsPoints = getPixelPoints(landmarks, LIPS_INDICES);
-    const ovalPoints = getPixelPoints(landmarks, FACE_OVAL_INDICES);
-
-    const lipsCenter = getCenterFromPoints(lipsPoints);
-    const ovalBounds = getBoundsFromPoints(ovalPoints);
-
-    const maskX = lipsCenter.x;
-    const maskY = lipsCenter.y + ovalBounds.height * 0.02;
-
-    const maskWidth = ovalBounds.width * 0.8;
-    const maskHeight = maskWidth * 0.55;
-
-    drawRotatedImage(
-      filterImages.mask,
-      maskX,
-      maskY,
-      maskWidth,
-      maskHeight,
-      angle
-    );
-  }
-}
-
 function drawResults(results) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -661,8 +394,8 @@ function drawResults(results) {
       });
     }
 
-    const bounds = getFaceBounds(landmarks);
-    drawSimpleFilter(bounds, landmarks);
+    getFaceBounds(landmarks, canvas);
+    drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filterImages);
   }
 }
 
@@ -677,25 +410,6 @@ function renderLoop() {
 
   requestAnimationFrame(renderLoop);
 }
-
-cameraToggleBtn.addEventListener("click", async () => {
-  await toggleCamera();
-});
-
-landmarksToggleBtn.addEventListener("click", () => {
-  showLandmarks = !showLandmarks;
-  updateLandmarksButton();
-
-  if (!cameraActive) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-});
-
-themeToggleBtn.addEventListener("click", () => {
-  toggleTheme();
-});
-
-window.addEventListener("resize", resizeCanvas);
 
 function getStoredSuggestions() {
   const savedSuggestions = localStorage.getItem("filterSuggestions");
@@ -740,25 +454,11 @@ function submitSuggestion() {
   suggestionMessage.textContent = "Sugestão enviada com sucesso.";
 }
 
-submitSuggestionBtn.addEventListener("click", () => {
-  submitSuggestion();
-});
-
-suggestionInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && event.ctrlKey) {
-    submitSuggestion();
-  }
-});
-
 function clearSuggestions() {
   localStorage.removeItem("filterSuggestions");
   renderSuggestions();
   suggestionMessage.textContent = "Sugestões removidas com sucesso.";
 }
-
-clearSuggestionsBtn.addEventListener("click", () => {
-  clearSuggestions();
-});
 
 function capturePhoto() {
   if (!cameraActive || !video.srcObject) {
@@ -780,14 +480,12 @@ function capturePhoto() {
 
   const exportCtx = exportCanvas.getContext("2d");
 
-  // desenhar vídeo espelhado para ficar igual ao que aparece na app
   exportCtx.save();
   exportCtx.translate(width, 0);
   exportCtx.scale(-1, 1);
   exportCtx.drawImage(video, 0, 0, width, height);
   exportCtx.restore();
 
-  // desenhar overlay do canvas também espelhado
   exportCtx.save();
   exportCtx.translate(width, 0);
   exportCtx.scale(-1, 1);
@@ -799,7 +497,14 @@ function capturePhoto() {
   photoPreview.src = capturedPhotoDataUrl;
   photoPreview.style.display = "block";
   photoMessage.textContent = "Foto capturada com sucesso.";
-  downloadPhotoBtn.disabled = false;
+
+  if (downloadPhotoTopBtn) {
+    downloadPhotoTopBtn.disabled = false;
+  }
+
+  if (downloadPhotoBtn) {
+    downloadPhotoBtn.disabled = false;
+  }
 }
 
 function downloadPhoto() {
@@ -811,20 +516,59 @@ function downloadPhoto() {
   link.click();
 }
 
-capturePhotoBtn.addEventListener("click", () => {
-  capturePhoto();
-});
-
-downloadPhotoBtn.addEventListener("click", () => {
-  downloadPhoto();
-});
-
 function scrollFilters(direction) {
   const scrollAmount = 140;
 
   filtersCatalog.scrollBy({
     left: direction * scrollAmount,
     behavior: "smooth"
+  });
+}
+
+cameraToggleBtn.addEventListener("click", async () => {
+  await toggleCamera();
+});
+
+landmarksToggleBtn.addEventListener("click", () => {
+  showLandmarks = !showLandmarks;
+  updateLandmarksButton();
+
+  if (!cameraActive) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+});
+
+themeToggleBtn.addEventListener("click", () => {
+  toggleTheme();
+});
+
+submitSuggestionBtn.addEventListener("click", () => {
+  submitSuggestion();
+});
+
+suggestionInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.ctrlKey) {
+    submitSuggestion();
+  }
+});
+
+clearSuggestionsBtn.addEventListener("click", () => {
+  clearSuggestions();
+});
+
+capturePhotoBtn.addEventListener("click", () => {
+  capturePhoto();
+});
+
+if (downloadPhotoTopBtn) {
+  downloadPhotoTopBtn.addEventListener("click", () => {
+    downloadPhoto();
+  });
+}
+
+if (downloadPhotoBtn) {
+  downloadPhotoBtn.addEventListener("click", () => {
+    downloadPhoto();
   });
 }
 
@@ -835,6 +579,8 @@ filtersPrevBtn.addEventListener("click", () => {
 filtersNextBtn.addEventListener("click", () => {
   scrollFilters(1);
 });
+
+window.addEventListener("resize", resizeCanvas);
 
 async function init() {
   try {
@@ -850,7 +596,7 @@ async function init() {
     await createFaceLandmarker();
 
     statusText.textContent = "A carregar filtros...";
-    await loadFilterImages();
+    filterImages = await loadFilterImages();
 
     renderCategoriesBar();
     renderFiltersCatalog();
