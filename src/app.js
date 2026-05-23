@@ -5,84 +5,39 @@ import {
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
 
 import { filtersConfig, categoriesConfig } from "./js/config/filters-data.js";
-import { getFaceBounds } from "./js/core/face-utils.js";
 import { loadFilterImages, drawSimpleFilter } from "./js/render/filters-renderer.js";
 
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+
 const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
-const filtersCatalog = document.getElementById("filtersCatalog");
-const favoriteFiltersCatalog = document.getElementById("favoriteFiltersCatalog");
+
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
 const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
-const themeToggleBtn = document.getElementById("themeToggleBtn");
-const suggestionInput = document.getElementById("suggestionInput");
-const submitSuggestionBtn = document.getElementById("submitSuggestionBtn");
-const suggestionMessage = document.getElementById("suggestionMessage");
-const suggestionsList = document.getElementById("suggestionsList");
-const clearSuggestionsBtn = document.getElementById("clearSuggestionsBtn");
 const capturePhotoBtn = document.getElementById("capturePhotoBtn");
-const downloadPhotoBtn = document.getElementById("downloadPhotoBtn");
+const downloadPhotoTopBtn = document.getElementById("downloadPhotoTopBtn");
+
+const filtersCategories = document.getElementById("filtersCategories");
+const filtersCatalog = document.getElementById("filtersCatalog");
+const filterAdjustPanel = document.getElementById("filterAdjustPanel");
+
 const photoPreview = document.getElementById("photoPreview");
 const photoMessage = document.getElementById("photoMessage");
-const filtersPrevBtn = document.getElementById("filtersPrevBtn");
-const filtersNextBtn = document.getElementById("filtersNextBtn");
-const filtersCategories = document.getElementById("filtersCategories");
-const downloadPhotoTopBtn = document.getElementById("downloadPhotoTopBtn");
 
 let filterImages = {};
 let faceLandmarker = null;
 let drawingUtils = null;
 let lastVideoTime = -1;
 let selectedFilters = new Set();
+let selectedCategory = "all";
+let lastSelectedFilterId = "none";
+
 let cameraStream = null;
 let cameraActive = false;
 let showLandmarks = true;
 let capturedPhotoDataUrl = "";
-let selectedCategory = "all";
-
-function getFavoriteFilters() {
-  const savedFavorites = localStorage.getItem("favoriteFilters");
-  return savedFavorites ? JSON.parse(savedFavorites) : [];
-}
-
-function saveFavoriteFilters(favorites) {
-  localStorage.setItem("favoriteFilters", JSON.stringify(favorites));
-}
-
-function isFavoriteFilter(filterId) {
-  return getFavoriteFilters().includes(filterId);
-}
-
-function toggleFavoriteFilter(filterId) {
-  if (filterId === "none") return;
-
-  const favorites = getFavoriteFilters();
-
-  if (favorites.includes(filterId)) {
-    const updatedFavorites = favorites.filter((id) => id !== filterId);
-    saveFavoriteFilters(updatedFavorites);
-  } else {
-    favorites.push(filterId);
-    saveFavoriteFilters(favorites);
-  }
-
-  renderFiltersCatalog();
-  renderFavoriteFiltersCatalog();
-}
-
-function applyTheme(theme) {
-  document.body.classList.toggle("dark-mode", theme === "dark");
-  localStorage.setItem("themeMode", theme);
-  themeToggleBtn.textContent = theme === "dark" ? "Modo claro" : "Modo escuro";
-}
-
-function toggleTheme() {
-  const isDark = document.body.classList.contains("dark-mode");
-  applyTheme(isDark ? "light" : "dark");
-}
 
 function updateFilterLabel() {
   if (selectedFilters.size === 0) {
@@ -95,6 +50,36 @@ function updateFilterLabel() {
     .map((filter) => filter.name);
 
   currentFilterText.textContent = `Filtros selecionados: ${selectedNames.join(" + ")}`;
+}
+
+function updateCameraButton() {
+  cameraToggleBtn.textContent = cameraActive ? "Desligar câmara" : "Ligar câmara";
+}
+
+function updateLandmarksButton() {
+  landmarksToggleBtn.textContent = showLandmarks ? "Ocultar landmarks" : "Mostrar landmarks";
+}
+
+function updateAdjustPanel() {
+  if (!filterAdjustPanel) return;
+
+  if (!lastSelectedFilterId || lastSelectedFilterId === "none") {
+    filterAdjustPanel.innerHTML = `
+      <p class="adjust-placeholder">
+        Seleciona um filtro para ajustar tamanho, posição e rotação.
+      </p>
+    `;
+    return;
+  }
+
+  const selectedFilter = filtersConfig.find((filter) => filter.id === lastSelectedFilterId);
+
+  filterAdjustPanel.innerHTML = `
+    <p class="adjust-placeholder">
+      Filtro atual: <strong>${selectedFilter ? selectedFilter.name : lastSelectedFilterId}</strong><br>
+      O painel de ajuste vai ficar aqui na próxima fase.
+    </p>
+  `;
 }
 
 function updateCatalogSelection() {
@@ -114,16 +99,24 @@ function updateCatalogSelection() {
 function toggleFilterSelection(filterId) {
   if (filterId === "none") {
     selectedFilters.clear();
+    lastSelectedFilterId = "none";
   } else {
     if (selectedFilters.has(filterId)) {
       selectedFilters.delete(filterId);
+
+      if (lastSelectedFilterId === filterId) {
+        const remaining = Array.from(selectedFilters);
+        lastSelectedFilterId = remaining.length > 0 ? remaining[remaining.length - 1] : "none";
+      }
     } else {
       selectedFilters.add(filterId);
+      lastSelectedFilterId = filterId;
     }
   }
 
   updateFilterLabel();
   updateCatalogSelection();
+  updateAdjustPanel();
 }
 
 function updateCategorySelection() {
@@ -141,6 +134,8 @@ function selectCategory(categoryId) {
 }
 
 function renderCategoriesBar() {
+  if (!filtersCategories) return;
+
   filtersCategories.innerHTML = "";
 
   categoriesConfig.forEach((category) => {
@@ -170,6 +165,8 @@ function getVisibleFilters() {
 }
 
 function renderFiltersCatalog() {
+  if (!filtersCatalog) return;
+
   filtersCatalog.innerHTML = "";
 
   getVisibleFilters().forEach((filter) => {
@@ -177,13 +174,8 @@ function renderFiltersCatalog() {
     card.className = "filter-card";
     card.dataset.filter = filter.id;
 
-    const favoriteClass = isFavoriteFilter(filter.id)
-      ? "favorite active"
-      : "favorite";
-
     if (filter.thumbnail) {
       card.innerHTML = `
-        <button class="${favoriteClass}" data-favorite="${filter.id}" title="Marcar como favorito">★</button>
         <img src="${filter.thumbnail}" alt="${filter.name}">
         <div class="filter-card-name">${filter.name}</div>
       `;
@@ -194,15 +186,6 @@ function renderFiltersCatalog() {
       `;
     }
 
-    const favoriteButton = card.querySelector("[data-favorite]");
-
-    if (favoriteButton) {
-      favoriteButton.addEventListener("click", (event) => {
-        event.stopPropagation();
-        toggleFavoriteFilter(filter.id);
-      });
-    }
-
     card.addEventListener("click", () => {
       toggleFilterSelection(filter.id);
     });
@@ -211,62 +194,6 @@ function renderFiltersCatalog() {
   });
 
   updateCatalogSelection();
-}
-
-function renderFavoriteFiltersCatalog() {
-  favoriteFiltersCatalog.innerHTML = "";
-
-  const favoriteIds = getFavoriteFilters();
-  const favoriteFilters = filtersConfig.filter((filter) =>
-    favoriteIds.includes(filter.id)
-  );
-
-  if (favoriteFilters.length === 0) {
-    favoriteFiltersCatalog.innerHTML = `
-      <div class="filter-card">
-        <div class="filter-card-placeholder">☆</div>
-        <div class="filter-card-name">Sem favoritos</div>
-      </div>
-    `;
-    return;
-  }
-
-  favoriteFilters.forEach((filter) => {
-    const card = document.createElement("div");
-    card.className = "filter-card";
-    card.dataset.filter = filter.id;
-
-    card.innerHTML = `
-      <button class="favorite active" data-favorite="${filter.id}" title="Remover dos favoritos">★</button>
-      <img src="${filter.thumbnail}" alt="${filter.name}">
-      <div class="filter-card-name">${filter.name}</div>
-    `;
-
-    const favoriteButton = card.querySelector("[data-favorite]");
-
-    if (favoriteButton) {
-      favoriteButton.addEventListener("click", (event) => {
-        event.stopPropagation();
-        toggleFavoriteFilter(filter.id);
-      });
-    }
-
-    card.addEventListener("click", () => {
-      toggleFilterSelection(filter.id);
-    });
-
-    favoriteFiltersCatalog.appendChild(card);
-  });
-
-  updateCatalogSelection();
-}
-
-function updateCameraButton() {
-  cameraToggleBtn.textContent = cameraActive ? "Desligar câmara" : "Ligar câmara";
-}
-
-function updateLandmarksButton() {
-  landmarksToggleBtn.textContent = showLandmarks ? "Ocultar landmarks" : "Mostrar landmarks";
 }
 
 function resizeCanvas() {
@@ -394,7 +321,6 @@ function drawResults(results) {
       });
     }
 
-    getFaceBounds(landmarks, canvas);
     drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filterImages);
   }
 }
@@ -409,55 +335,6 @@ function renderLoop() {
   }
 
   requestAnimationFrame(renderLoop);
-}
-
-function getStoredSuggestions() {
-  const savedSuggestions = localStorage.getItem("filterSuggestions");
-  return savedSuggestions ? JSON.parse(savedSuggestions) : [];
-}
-
-function saveSuggestions(suggestions) {
-  localStorage.setItem("filterSuggestions", JSON.stringify(suggestions));
-}
-
-function renderSuggestions() {
-  const suggestions = getStoredSuggestions();
-  suggestionsList.innerHTML = "";
-
-  if (suggestions.length === 0) {
-    suggestionsList.innerHTML = "<li>Ainda não existem sugestões.</li>";
-    return;
-  }
-
-  suggestions.slice().reverse().forEach((suggestion) => {
-    const li = document.createElement("li");
-    li.textContent = suggestion;
-    suggestionsList.appendChild(li);
-  });
-}
-
-function submitSuggestion() {
-  const suggestion = suggestionInput.value.trim();
-
-  if (!suggestion) {
-    suggestionMessage.textContent = "Escreve uma sugestão antes de enviar.";
-    return;
-  }
-
-  const suggestions = getStoredSuggestions();
-  suggestions.push(suggestion);
-
-  saveSuggestions(suggestions);
-  renderSuggestions();
-
-  suggestionInput.value = "";
-  suggestionMessage.textContent = "Sugestão enviada com sucesso.";
-}
-
-function clearSuggestions() {
-  localStorage.removeItem("filterSuggestions");
-  renderSuggestions();
-  suggestionMessage.textContent = "Sugestões removidas com sucesso.";
 }
 
 function capturePhoto() {
@@ -501,10 +378,6 @@ function capturePhoto() {
   if (downloadPhotoTopBtn) {
     downloadPhotoTopBtn.disabled = false;
   }
-
-  if (downloadPhotoBtn) {
-    downloadPhotoBtn.disabled = false;
-  }
 }
 
 function downloadPhoto() {
@@ -514,15 +387,6 @@ function downloadPhoto() {
   link.href = capturedPhotoDataUrl;
   link.download = `ar-face-filters-${Date.now()}.png`;
   link.click();
-}
-
-function scrollFilters(direction) {
-  const scrollAmount = 140;
-
-  filtersCatalog.scrollBy({
-    left: direction * scrollAmount,
-    behavior: "smooth"
-  });
 }
 
 cameraToggleBtn.addEventListener("click", async () => {
@@ -538,24 +402,6 @@ landmarksToggleBtn.addEventListener("click", () => {
   }
 });
 
-themeToggleBtn.addEventListener("click", () => {
-  toggleTheme();
-});
-
-submitSuggestionBtn.addEventListener("click", () => {
-  submitSuggestion();
-});
-
-suggestionInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && event.ctrlKey) {
-    submitSuggestion();
-  }
-});
-
-clearSuggestionsBtn.addEventListener("click", () => {
-  clearSuggestions();
-});
-
 capturePhotoBtn.addEventListener("click", () => {
   capturePhoto();
 });
@@ -566,31 +412,14 @@ if (downloadPhotoTopBtn) {
   });
 }
 
-if (downloadPhotoBtn) {
-  downloadPhotoBtn.addEventListener("click", () => {
-    downloadPhoto();
-  });
-}
-
-filtersPrevBtn.addEventListener("click", () => {
-  scrollFilters(-1);
-});
-
-filtersNextBtn.addEventListener("click", () => {
-  scrollFilters(1);
-});
-
 window.addEventListener("resize", resizeCanvas);
 
 async function init() {
   try {
-    const savedTheme = localStorage.getItem("themeMode") || "light";
-    applyTheme(savedTheme);
-
     updateFilterLabel();
     updateCameraButton();
     updateLandmarksButton();
-    renderSuggestions();
+    updateAdjustPanel();
 
     statusText.textContent = "A carregar deteção facial...";
     await createFaceLandmarker();
@@ -600,7 +429,6 @@ async function init() {
 
     renderCategoriesBar();
     renderFiltersCatalog();
-    renderFavoriteFiltersCatalog();
 
     statusText.textContent = "A iniciar webcam...";
     await startWebcam();

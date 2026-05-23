@@ -48,7 +48,6 @@ export function drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filter
   const ovalBounds = getBoundsFromPoints(ovalPoints);
 
   const faceCenterX = eyesCenterX;
-  const faceCenterY = (eyesCenterY + lipsCenter.y) / 2;
 
   if (selectedFilters.has("hat")) {
     const hatX = eyesCenterX;
@@ -125,18 +124,18 @@ export function drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filter
   if (selectedFilters.has("mustache")) {
     const mustacheX = eyesCenterX;
     const mustacheY = eyesCenterY + (lipsCenter.y - eyesCenterY) * 0.74;
-    const mustacheWidth = eyesDistance * 2.25;
-    const mustacheHeight = mustacheWidth * 1.0;
+    const mustacheWidth = eyesDistance * 1.25;
+    const mustacheHeight = mustacheWidth * 0.32;
 
     drawRotatedImage(ctx, filterImages.mustache, mustacheX, mustacheY, mustacheWidth, mustacheHeight, angle);
   }
 
   if (selectedFilters.has("joker")) {
-    const jokerWidth = ovalBounds.width * 1.10;
-    const jokerHeight = jokerWidth * 2.24;
+    const jokerWidth = ovalBounds.width * 1.08;
+    const jokerHeight = jokerWidth * 1.30;
     const jokerX = faceCenterX;
     const jokerY = ovalBounds.minY + ovalBounds.height * 0.46;
 
-    drawRotatedImage(ctx, filterImages.joker, jokerX, jokerY, jokerWidth, jokerHeight, angle);
+    drawRotatedImage(ctx, filterImages.joker, jokerX, jokerY, jokerWidth, jokerHeight, angle * 0.35);
   }
 }
