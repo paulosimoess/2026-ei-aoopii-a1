@@ -472,6 +472,51 @@ textarea {
   background: #000000;
 }
 
+.adjust-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.adjust-title strong {
+  color: var(--text);
+  text-align: right;
+}
+
+.adjust-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adjust-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.adjust-label strong {
+  color: var(--text);
+  min-width: 54px;
+  text-align: right;
+}
+
+.adjust-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.adjust-reset-btn {
+  margin-top: 4px;
+}
+
 @media (max-width: 1200px) {
   .app-shell {
     grid-template-columns: minmax(0, 1fr) 380px;

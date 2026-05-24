@@ -24,6 +24,7 @@ const photoMessage = document.getElementById("photoMessage");
 const photoModal = document.getElementById("photoModal");
 const photoModalImage = document.getElementById("photoModalImage");
 const closePhotoModalBtn = document.getElementById("closePhotoModalBtn");
+const FILTER_ADJUSTMENTS_STORAGE_KEY = "ar_face_filter_adjustments";
 
 let filterImages = {};
 let faceLandmarker = null;
@@ -32,11 +33,11 @@ let lastVideoTime = -1;
 let selectedFilters = new Set();
 let selectedCategory = "all";
 let lastSelectedFilterId = "none";
-
 let cameraStream = null;
 let cameraActive = false;
 let showLandmarks = true;
 let capturedPhotoDataUrl = "";
+let filterAdjustments = {};
 
 function updateFilterLabel() {
   if (!currentFilterText) return;
@@ -61,6 +62,82 @@ function updateLandmarksButton() {
   landmarksToggleBtn.textContent = showLandmarks ? "Ocultar landmarks" : "Mostrar landmarks";
 }
 
+function getDefaultAdjustment() {
+  return {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0
+  };
+}
+
+function createDefaultFilterAdjustments() {
+  const defaults = {};
+
+  filtersConfig.forEach((filter) => {
+    if (filter.id !== "none") {
+      defaults[filter.id] = getDefaultAdjustment();
+    }
+  });
+
+  return defaults;
+}
+
+function loadFilterAdjustments() {
+  const defaults = createDefaultFilterAdjustments();
+
+  try {
+    const saved = localStorage.getItem(FILTER_ADJUSTMENTS_STORAGE_KEY);
+
+    if (!saved) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(saved);
+
+    Object.keys(defaults).forEach((filterId) => {
+      defaults[filterId] = {
+        ...defaults[filterId],
+        ...(parsed[filterId] || {})
+      };
+    });
+
+    return defaults;
+  } catch (error) {
+    console.error("Erro ao carregar ajustes dos filtros:", error);
+    return defaults;
+  }
+}
+
+function saveFilterAdjustments() {
+  localStorage.setItem(
+    FILTER_ADJUSTMENTS_STORAGE_KEY,
+    JSON.stringify(filterAdjustments)
+  );
+}
+
+function getFilterAdjustment(filterId) {
+  if (!filterAdjustments[filterId]) {
+    filterAdjustments[filterId] = getDefaultAdjustment();
+  }
+
+  return filterAdjustments[filterId];
+}
+
+function updateAdjustValueLabels(filterId) {
+  const adjustment = getFilterAdjustment(filterId);
+
+  const scaleValue = document.querySelector('[data-adjust-value="scale"]');
+  const offsetXValue = document.querySelector('[data-adjust-value="offsetX"]');
+  const offsetYValue = document.querySelector('[data-adjust-value="offsetY"]');
+  const rotationValue = document.querySelector('[data-adjust-value="rotation"]');
+
+  if (scaleValue) scaleValue.textContent = `${adjustment.scale.toFixed(2)}x`;
+  if (offsetXValue) offsetXValue.textContent = `${adjustment.offsetX}px`;
+  if (offsetYValue) offsetYValue.textContent = `${adjustment.offsetY}px`;
+  if (rotationValue) rotationValue.textContent = `${adjustment.rotation}°`;
+}
+
 function updateAdjustPanel() {
   if (!filterAdjustPanel) return;
 
@@ -75,12 +152,111 @@ function updateAdjustPanel() {
 
   const selectedFilter = filtersConfig.find((filter) => filter.id === lastSelectedFilterId);
 
+  if (!selectedFilter) {
+    filterAdjustPanel.innerHTML = `
+      <p class="adjust-placeholder">
+        Não foi possível encontrar o filtro selecionado.
+      </p>
+    `;
+    return;
+  }
+
+  const adjustment = getFilterAdjustment(lastSelectedFilterId);
+
   filterAdjustPanel.innerHTML = `
-    <p class="adjust-placeholder">
-      Filtro atual: <strong>${selectedFilter ? selectedFilter.name : lastSelectedFilterId}</strong><br>
-      O painel de ajuste vai ficar aqui na próxima fase.
-    </p>
+    <div class="adjust-title">
+      <span>Filtro atual</span>
+      <strong>${selectedFilter.name}</strong>
+    </div>
+
+    <div class="adjust-control">
+      <div class="adjust-label">
+        <span>Tamanho</span>
+        <strong data-adjust-value="scale">${adjustment.scale.toFixed(2)}x</strong>
+      </div>
+      <input
+        type="range"
+        min="0.50"
+        max="1.80"
+        step="0.05"
+        value="${adjustment.scale}"
+        data-adjust="scale"
+      />
+    </div>
+
+    <div class="adjust-control">
+      <div class="adjust-label">
+        <span>Posição horizontal</span>
+        <strong data-adjust-value="offsetX">${adjustment.offsetX}px</strong>
+      </div>
+      <input
+        type="range"
+        min="-120"
+        max="120"
+        step="1"
+        value="${adjustment.offsetX}"
+        data-adjust="offsetX"
+      />
+    </div>
+
+    <div class="adjust-control">
+      <div class="adjust-label">
+        <span>Posição vertical</span>
+        <strong data-adjust-value="offsetY">${adjustment.offsetY}px</strong>
+      </div>
+      <input
+        type="range"
+        min="-120"
+        max="120"
+        step="1"
+        value="${adjustment.offsetY}"
+        data-adjust="offsetY"
+      />
+    </div>
+
+    <div class="adjust-control">
+      <div class="adjust-label">
+        <span>Rotação</span>
+        <strong data-adjust-value="rotation">${adjustment.rotation}°</strong>
+      </div>
+      <input
+        type="range"
+        min="-45"
+        max="45"
+        step="1"
+        value="${adjustment.rotation}"
+        data-adjust="rotation"
+      />
+    </div>
+
+    <button id="resetAdjustmentsBtn" class="panel-btn panel-btn-secondary adjust-reset-btn">
+      Repor ajustes
+    </button>
   `;
+
+  const inputs = filterAdjustPanel.querySelectorAll("[data-adjust]");
+
+  inputs.forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = input.dataset.adjust;
+      const value = Number(input.value);
+
+      filterAdjustments[lastSelectedFilterId][key] = value;
+
+      saveFilterAdjustments();
+      updateAdjustValueLabels(lastSelectedFilterId);
+    });
+  });
+
+  const resetButton = document.getElementById("resetAdjustmentsBtn");
+
+  if (resetButton) {
+    resetButton.addEventListener("click", () => {
+      filterAdjustments[lastSelectedFilterId] = getDefaultAdjustment();
+      saveFilterAdjustments();
+      updateAdjustPanel();
+    });
+  }
 }
 
 function updateCatalogSelection() {
@@ -353,7 +529,7 @@ function drawResults(results) {
       });
     }
 
-    drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filterImages);
+    drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filterImages, filterAdjustments);
   }
 }
 
@@ -488,6 +664,8 @@ document.addEventListener("keydown", (event) => {
 
 async function init() {
   try {
+    filterAdjustments = loadFilterAdjustments();
+    
     updateFilterLabel();
     updateCameraButton();
     updateLandmarksButton();
