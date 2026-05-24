@@ -43,9 +43,9 @@ textarea {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 24px;
-  padding: 16px 24px;
+  grid-template-columns: minmax(0, 1fr) 750px;
+  gap: 8px;
+  padding: 12px;
   align-items: start;
 }
 
@@ -53,31 +53,36 @@ textarea {
   grid-column: 1;
   grid-row: 1;
   min-width: 0;
+  width: 100%;
   display: flex;
   align-items: flex-start;
+  position: relative;
+  z-index: 1;
 }
+
 
 .viewer-stage {
   width: 100%;
-  min-height: calc(100vh - 32px);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  min-width: 0;
+  background: transparent;
+  border: none;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow);
-  padding: 22px;
+  box-shadow: none;
+  padding: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
 }
 
 .viewer-frame {
   position: relative;
-  width: min(100%, 980px);
-  height: min(78vh, 760px);
+  width: 100%;
+  max-width: 100%;
   background: #d1d5db;
-  border-radius: 28px;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  aspect-ratio: 4 / 3;
 }
 
 #video,
@@ -91,6 +96,7 @@ textarea {
 #video {
   object-fit: cover;
   transform: scaleX(-1);
+  pointer-events: none;
 }
 
 #canvas {
@@ -114,6 +120,10 @@ textarea {
 .studio-sidebar {
   grid-column: 2;
   grid-row: 1;
+  position: relative;
+  z-index: 5;
+  height: calc(100vh - 24px);
+  max-height: none;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -123,7 +133,6 @@ textarea {
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
-  max-height: calc(100vh - 32px);
 }
 
 .brand-block {
@@ -238,19 +247,20 @@ textarea {
 }
 
 .filters-panel {
-  flex: 1;
-  min-height: 220px;
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
 }
 
 .filters-sidebar-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
 
 .filter-card {
   position: relative;
-  min-height: 158px;
+  min-height: 130px;
   background: #ffffff;
   border: 2px solid transparent;
   border-radius: 16px;
@@ -295,7 +305,7 @@ textarea {
 .filter-card img,
 .filter-card-placeholder {
   width: 100%;
-  height: 82px;
+  height: 66px;
   object-fit: contain;
   background: #ffffff;
   border-radius: 12px;
@@ -348,12 +358,6 @@ textarea {
   color: #f4b400;
 }
 
-.current-filter-text {
-  margin: 0;
-  color: var(--text-soft);
-  line-height: 1.45;
-}
-
 .filter-adjust-panel {
   min-height: 110px;
   display: flex;
@@ -390,13 +394,91 @@ textarea {
   font-size: 0.92rem;
 }
 
+.photo-actions {
+  margin-bottom: 12px;
+}
+
+.preview-panel .photo-message {
+  margin-bottom: 12px;
+}
+
+.horizontal-actions {
+  flex-direction: row;
+}
+
+.horizontal-actions .panel-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.photo-actions {
+  margin-bottom: 12px;
+}
+
+.photo-preview {
+  cursor: zoom-in;
+}
+
+.photo-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  z-index: 50;
+}
+
+.photo-modal.hidden {
+  display: none;
+}
+
+.photo-modal-content {
+  position: relative;
+  max-width: min(92vw, 1100px);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
+.photo-modal-image {
+  display: block;
+  max-width: 100%;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 16px;
+}
+
+.photo-modal-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.photo-modal-close:hover {
+  background: #000000;
+}
+
 @media (max-width: 1200px) {
   .app-shell {
-    grid-template-columns: minmax(0, 1fr) 420px;
+    grid-template-columns: minmax(0, 1fr) 380px;
   }
 
   .viewer-frame {
-    width: min(100%, 860px);
+    width: min(100%, 780px);
     height: min(72vh, 640px);
   }
 }

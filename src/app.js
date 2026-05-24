@@ -10,21 +10,20 @@ import { loadFilterImages, drawSimpleFilter } from "./js/render/filters-renderer
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-
 const statusText = document.getElementById("status");
 const currentFilterText = document.getElementById("currentFilter");
-
 const cameraToggleBtn = document.getElementById("cameraToggleBtn");
 const landmarksToggleBtn = document.getElementById("landmarksToggleBtn");
 const capturePhotoBtn = document.getElementById("capturePhotoBtn");
 const downloadPhotoTopBtn = document.getElementById("downloadPhotoTopBtn");
-
 const filtersCategories = document.getElementById("filtersCategories");
 const filtersCatalog = document.getElementById("filtersCatalog");
 const filterAdjustPanel = document.getElementById("filterAdjustPanel");
-
 const photoPreview = document.getElementById("photoPreview");
 const photoMessage = document.getElementById("photoMessage");
+const photoModal = document.getElementById("photoModal");
+const photoModalImage = document.getElementById("photoModalImage");
+const closePhotoModalBtn = document.getElementById("closePhotoModalBtn");
 
 let filterImages = {};
 let faceLandmarker = null;
@@ -40,6 +39,8 @@ let showLandmarks = true;
 let capturedPhotoDataUrl = "";
 
 function updateFilterLabel() {
+  if (!currentFilterText) return;
+
   if (selectedFilters.size === 0) {
     currentFilterText.textContent = "Filtros selecionados: Sem filtro";
     return;
@@ -196,9 +197,39 @@ function renderFiltersCatalog() {
   updateCatalogSelection();
 }
 
+function updateViewerFrameSize() {
+  const viewerFrame = document.querySelector(".viewer-frame");
+  const viewerStage = document.querySelector(".viewer-stage");
+
+  if (!viewerFrame || !viewerStage || !video.videoWidth || !video.videoHeight) {
+    return;
+  }
+
+  const ratio = video.videoWidth / video.videoHeight;
+
+  const availableHeight = window.innerHeight - 24;
+  const maxWidthFromHeight = availableHeight * ratio;
+  const stageWidth = viewerStage.clientWidth;
+
+  const finalWidth = Math.min(stageWidth, maxWidthFromHeight);
+
+  viewerFrame.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  viewerFrame.style.width = `${finalWidth}px`;
+  viewerFrame.style.height = "auto";
+}
+
 function resizeCanvas() {
-  canvas.width = video.videoWidth || video.clientWidth || canvas.width;
-  canvas.height = video.videoHeight || video.clientHeight || canvas.height;
+  updateViewerFrameSize();
+
+  const viewerFrame = document.querySelector(".viewer-frame");
+  if (!viewerFrame) return;
+
+  const rect = viewerFrame.getBoundingClientRect();
+
+  if (!rect.width || !rect.height) return;
+
+  canvas.width = Math.round(rect.width);
+  canvas.height = Math.round(rect.height);
 }
 
 async function startWebcam() {
@@ -216,9 +247,10 @@ async function startWebcam() {
     };
   });
 
-  resizeCanvas();
   cameraActive = true;
   lastVideoTime = -1;
+
+  resizeCanvas();
   updateCameraButton();
   statusText.textContent = "Webcam ativa";
 }
@@ -373,11 +405,24 @@ function capturePhoto() {
 
   photoPreview.src = capturedPhotoDataUrl;
   photoPreview.style.display = "block";
-  photoMessage.textContent = "Foto capturada com sucesso.";
+  photoMessage.textContent = "Foto capturada com sucesso, clica para ampliar";
 
   if (downloadPhotoTopBtn) {
     downloadPhotoTopBtn.disabled = false;
   }
+}
+
+function openPhotoModal() {
+  if (!capturedPhotoDataUrl || !photoModal || !photoModalImage) return;
+
+  photoModalImage.src = capturedPhotoDataUrl;
+  photoModal.classList.remove("hidden");
+}
+
+function closePhotoModal() {
+  if (!photoModal) return;
+
+  photoModal.classList.add("hidden");
 }
 
 function downloadPhoto() {
@@ -412,7 +457,34 @@ if (downloadPhotoTopBtn) {
   });
 }
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  updateViewerFrameSize();
+});
+
+photoPreview.addEventListener("click", () => {
+  openPhotoModal();
+});
+
+if (closePhotoModalBtn) {
+  closePhotoModalBtn.addEventListener("click", () => {
+    closePhotoModal();
+  });
+}
+
+if (photoModal) {
+  photoModal.addEventListener("click", (event) => {
+    if (event.target === photoModal) {
+      closePhotoModal();
+    }
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closePhotoModal();
+  }
+});
 
 async function init() {
   try {

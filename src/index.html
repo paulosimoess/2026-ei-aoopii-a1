@@ -6,36 +6,27 @@
   <title>AR Face Filters</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="app-shell">
+    <main class="studio-main">
+      <section class="viewer-stage">
+        <div class="viewer-frame">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="canvas"></canvas>
+          <div id="status" class="status-pill">A iniciar webcam...</div>
+        </div>
+      </section>
+    </main>
+
     <aside class="studio-sidebar">
       <div class="brand-block">
-        <p class="brand-tag">AR STUDIO</p>
+        <p class="brand-tag">AR Filters</p>
         <h1>Face Filters</h1>
-        <p class="brand-subtitle">Aplica, ajusta e captura filtros faciais em tempo real.</p>
+        <p class="brand-subtitle">
+          Aplica, ajusta e captura filtros faciais em tempo real.
+        </p>
       </div>
-
-      <section class="panel-card">
-        <div class="panel-header">
-          <h2>Controlos</h2>
-        </div>
-
-        <div class="panel-actions vertical-actions">
-          <button id="cameraToggleBtn" class="panel-btn">Ligar câmara</button>
-          <button id="landmarksToggleBtn" class="panel-btn panel-btn-secondary">Ocultar landmarks</button>
-        </div>
-      </section>
-
-      <section class="panel-card">
-        <div class="panel-header">
-          <h2>Captura</h2>
-        </div>
-
-        <div class="panel-actions vertical-actions">
-          <button id="capturePhotoBtn" class="panel-btn">📸 Tirar foto</button>
-          <button id="downloadPhotoTopBtn" class="panel-btn panel-btn-secondary" disabled>📤 Transferir imagem</button>
-        </div>
-      </section>
 
       <section class="panel-card">
         <div class="panel-header">
@@ -55,14 +46,6 @@
 
       <section class="panel-card">
         <div class="panel-header">
-          <h2>Filtro selecionado</h2>
-        </div>
-
-        <p id="currentFilter" class="current-filter-text">Filtros selecionados: Sem filtro</p>
-      </section>
-
-      <section class="panel-card">
-        <div class="panel-header">
           <h2>Ajustar filtro</h2>
         </div>
 
@@ -73,25 +56,51 @@
         </div>
       </section>
 
+      <section class="panel-card">
+        <div class="panel-header">
+          <h2>Controlos</h2>
+        </div>
+
+        <div class="panel-actions horizontal-actions">
+          <button id="cameraToggleBtn" class="panel-btn">
+            Ligar câmara
+          </button>
+
+          <button id="landmarksToggleBtn" class="panel-btn panel-btn-secondary">
+            Ocultar landmarks
+          </button>
+        </div>
+      </section>
+
       <section class="panel-card preview-panel">
         <div class="panel-header">
-          <h2>Pré-visualização</h2>
+          <h2>Fotografia</h2>
+        </div>
+
+        <div class="panel-actions horizontal-actions photo-actions">
+          <button id="capturePhotoBtn" class="panel-btn">
+            Tirar foto
+          </button>
+
+          <button id="downloadPhotoTopBtn" class="panel-btn panel-btn-secondary" disabled>
+            Transferir imagem
+          </button>
         </div>
 
         <img id="photoPreview" class="photo-preview" alt="Foto capturada" />
-        <p id="photoMessage" class="photo-message">Ainda não foi capturada nenhuma foto.</p>
+
+        <p id="photoMessage" class="photo-message">
+          Ainda não foi capturada nenhuma foto.
+        </p>
       </section>
     </aside>
+  </div>
 
-    <main class="studio-main">
-      <section class="viewer-stage">
-        <div class="viewer-frame">
-          <video id="video" autoplay playsinline muted></video>
-          <canvas id="canvas"></canvas>
-          <div id="status" class="status-pill">A iniciar webcam...</div>
-        </div>
-      </section>
-    </main>
+  <div id="photoModal" class="photo-modal hidden">
+    <div class="photo-modal-content">
+      <button id="closePhotoModalBtn" class="photo-modal-close">×</button>
+      <img id="photoModalImage" class="photo-modal-image" alt="Foto capturada ampliada" />
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>
