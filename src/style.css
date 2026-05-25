@@ -590,3 +590,103 @@ textarea {
     border-radius: 22px;
   }
 }
+
+.adjust-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.adjust-actions .panel-btn {
+  width: 100%;
+}
+
+.preset-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.preset-section-title {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.preset-empty {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.presets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preset-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.preset-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.preset-info strong {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.preset-info span {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 230px;
+}
+
+.preset-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.preset-mini-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #e5e7eb;
+  color: var(--text);
+  transition: 0.2s ease;
+}
+
+.preset-mini-btn:hover {
+  background: #d1d5db;
+}
+
+.preset-apply-btn {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.preset-apply-btn:hover {
+  background: var(--accent-hover);
+}

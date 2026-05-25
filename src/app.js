@@ -24,7 +24,9 @@ const photoMessage = document.getElementById("photoMessage");
 const photoModal = document.getElementById("photoModal");
 const photoModalImage = document.getElementById("photoModalImage");
 const closePhotoModalBtn = document.getElementById("closePhotoModalBtn");
+
 const FILTER_ADJUSTMENTS_STORAGE_KEY = "ar_face_filter_adjustments";
+const FILTER_PRESETS_STORAGE_KEY = "ar_face_filter_presets";
 
 let filterImages = {};
 let faceLandmarker = null;
@@ -38,6 +40,7 @@ let cameraActive = false;
 let showLandmarks = true;
 let capturedPhotoDataUrl = "";
 let filterAdjustments = {};
+let filterPresets = [];
 
 function updateFilterLabel() {
   if (!currentFilterText) return;
@@ -138,6 +141,160 @@ function updateAdjustValueLabels(filterId) {
   if (rotationValue) rotationValue.textContent = `${adjustment.rotation}°`;
 }
 
+function loadFilterPresets() {
+  try {
+    const saved = localStorage.getItem(FILTER_PRESETS_STORAGE_KEY);
+
+    if (!saved) {
+      return [];
+    }
+
+    return JSON.parse(saved);
+  } catch (error) {
+    console.error("Erro ao carregar presets:", error);
+    return [];
+  }
+}
+
+function saveFilterPresets() {
+  localStorage.setItem(
+    FILTER_PRESETS_STORAGE_KEY,
+    JSON.stringify(filterPresets)
+  );
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getSelectedFilterIds() {
+  return Array.from(selectedFilters).filter((filterId) => filterId !== "none");
+}
+
+function getFilterName(filterId) {
+  const filter = filtersConfig.find((item) => item.id === filterId);
+  return filter ? filter.name : filterId;
+}
+
+function getPresetsHtml() {
+  if (filterPresets.length === 0) {
+    return `
+      <p class="preset-empty">
+        Ainda não existem presets guardados.
+      </p>
+    `;
+  }
+
+  return `
+    <div class="presets-list">
+      ${filterPresets
+        .map((preset) => {
+          const filterNames = preset.filters
+            .map((filterId) => getFilterName(filterId))
+            .join(" + ");
+
+          return `
+            <div class="preset-item">
+              <div class="preset-info">
+                <strong>${escapeHtml(preset.name)}</strong>
+                <span>${escapeHtml(filterNames)}</span>
+              </div>
+
+              <div class="preset-actions">
+                <button class="preset-mini-btn preset-apply-btn" data-preset-id="${preset.id}">
+                  Aplicar
+                </button>
+
+                <button class="preset-mini-btn preset-delete-btn" data-preset-id="${preset.id}">
+                  Apagar
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function saveCurrentPreset() {
+  const filterIds = getSelectedFilterIds();
+
+  if (filterIds.length === 0) {
+    alert("Seleciona pelo menos um filtro antes de guardar um preset.");
+    return;
+  }
+
+  const defaultName =
+    filterIds.length === 1
+      ? `Preset ${getFilterName(filterIds[0])}`
+      : `Preset ${filterIds.length} filtros`;
+
+  const presetName = prompt("Nome do preset:", defaultName);
+
+  if (presetName === null) {
+    return;
+  }
+
+  const cleanName = presetName.trim() || defaultName;
+  const presetAdjustments = {};
+
+  filterIds.forEach((filterId) => {
+    presetAdjustments[filterId] = {
+      ...getFilterAdjustment(filterId)
+    };
+  });
+
+  const newPreset = {
+    id: String(Date.now()),
+    name: cleanName,
+    filters: filterIds,
+    adjustments: presetAdjustments,
+    createdAt: new Date().toISOString()
+  };
+
+  filterPresets.unshift(newPreset);
+  saveFilterPresets();
+  updateAdjustPanel();
+}
+
+function applyPreset(presetId) {
+  const preset = filterPresets.find((item) => item.id === presetId);
+
+  if (!preset) {
+    return;
+  }
+
+  selectedFilters.clear();
+
+  preset.filters.forEach((filterId) => {
+    selectedFilters.add(filterId);
+
+    filterAdjustments[filterId] = {
+      ...getDefaultAdjustment(),
+      ...(preset.adjustments[filterId] || {})
+    };
+  });
+
+  lastSelectedFilterId = preset.filters.length > 0 ? preset.filters[0] : "none";
+
+  saveFilterAdjustments();
+  updateFilterLabel();
+  updateCatalogSelection();
+  updateAdjustPanel();
+}
+
+function deletePreset(presetId) {
+  filterPresets = filterPresets.filter((item) => item.id !== presetId);
+  saveFilterPresets();
+  updateAdjustPanel();
+}
+
 function updateAdjustPanel() {
   if (!filterAdjustPanel) return;
 
@@ -166,7 +323,7 @@ function updateAdjustPanel() {
   filterAdjustPanel.innerHTML = `
     <div class="adjust-title">
       <span>Filtro atual</span>
-      <strong>${selectedFilter.name}</strong>
+      <strong>${escapeHtml(selectedFilter.name)}</strong>
     </div>
 
     <div class="adjust-control">
@@ -229,9 +386,23 @@ function updateAdjustPanel() {
       />
     </div>
 
-    <button id="resetAdjustmentsBtn" class="panel-btn panel-btn-secondary adjust-reset-btn">
-      Repor ajustes
-    </button>
+    <div class="adjust-actions">
+      <button id="resetAdjustmentsBtn" class="panel-btn panel-btn-secondary">
+        Repor ajustes
+      </button>
+
+      <button id="savePresetBtn" class="panel-btn">
+        Guardar preset
+      </button>
+    </div>
+
+    <div class="preset-section">
+      <div class="preset-section-title">
+        <strong>Presets guardados</strong>
+      </div>
+
+      ${getPresetsHtml()}
+    </div>
   `;
 
   const inputs = filterAdjustPanel.querySelectorAll("[data-adjust]");
@@ -257,6 +428,30 @@ function updateAdjustPanel() {
       updateAdjustPanel();
     });
   }
+
+  const savePresetButton = document.getElementById("savePresetBtn");
+
+  if (savePresetButton) {
+    savePresetButton.addEventListener("click", () => {
+      saveCurrentPreset();
+    });
+  }
+
+  const applyPresetButtons = filterAdjustPanel.querySelectorAll(".preset-apply-btn");
+
+  applyPresetButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      applyPreset(button.dataset.presetId);
+    });
+  });
+
+  const deletePresetButtons = filterAdjustPanel.querySelectorAll(".preset-delete-btn");
+
+  deletePresetButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      deletePreset(button.dataset.presetId);
+    });
+  });
 }
 
 function updateCatalogSelection() {
@@ -665,7 +860,8 @@ document.addEventListener("keydown", (event) => {
 async function init() {
   try {
     filterAdjustments = loadFilterAdjustments();
-    
+    filterPresets = loadFilterPresets();
+
     updateFilterLabel();
     updateCameraButton();
     updateLandmarksButton();
