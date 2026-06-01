@@ -13,6 +13,7 @@
       <section class="viewer-stage">
         <div class="viewer-frame">
           <video id="video" autoplay playsinline muted></video>
+          <canvas id="threeCanvas"></canvas>
           <canvas id="canvas"></canvas>
           <div id="status" class="status-pill">A iniciar webcam...</div>
         </div>
@@ -102,6 +103,15 @@
       <img id="photoModalImage" class="photo-modal-image" alt="Foto capturada ampliada" />
     </div>
   </div>
+
+  <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+  </script>
 
   <script type="module" src="app.js"></script>
 </body>

@@ -86,7 +86,18 @@ export const filtersConfig = [
     asset: "./assets/filters/joker.png",
     anchor: "fullface",
     category: "halloween"
-  }
+  },
+  {
+    id: "glasses3d",
+    name: "Óculos 3D",
+    thumbnail: null,
+    emoji: "🥽",
+    asset: null,
+    model: "./assets/models3d/glasses.glb",
+    anchor: "eyes3d",
+    category: "3d",
+    type: "3d"
+  },
 ];
 
 export const categoriesConfig = [
@@ -95,5 +106,6 @@ export const categoriesConfig = [
   { id: "christmas", label: "Natal" },
   { id: "easter", label: "Páscoa" },
   { id: "halloween", label: "Halloween" },
-  { id: "fun", label: "Divertidos" }
+  { id: "fun", label: "Divertidos" },
+  { id: "3d", label: "3D" }
 ];

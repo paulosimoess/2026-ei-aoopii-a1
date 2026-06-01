@@ -7,6 +7,13 @@ import {
 import { filtersConfig, categoriesConfig } from "./js/config/filters-data.js";
 import { loadFilterImages, drawSimpleFilter } from "./js/render/filters-renderer.js";
 
+import {
+  initThreeRenderer,
+  resizeThreeRenderer,
+  renderThreeFilters,
+  clearThreeRenderer
+} from "./js/render/three-renderer.js";
+
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -24,6 +31,7 @@ const photoMessage = document.getElementById("photoMessage");
 const photoModal = document.getElementById("photoModal");
 const photoModalImage = document.getElementById("photoModalImage");
 const closePhotoModalBtn = document.getElementById("closePhotoModalBtn");
+const threeCanvas = document.getElementById("threeCanvas");
 
 const FILTER_ADJUSTMENTS_STORAGE_KEY = "ar_face_filter_adjustments";
 const FILTER_PRESETS_STORAGE_KEY = "ar_face_filter_presets";
@@ -70,7 +78,9 @@ function getDefaultAdjustment() {
     scale: 1,
     offsetX: 0,
     offsetY: 0,
-    rotation: 0
+    rotation: 0,
+    rotationX: 0,
+    rotationY: 0
   };
 }
 
@@ -134,11 +144,15 @@ function updateAdjustValueLabels(filterId) {
   const offsetXValue = document.querySelector('[data-adjust-value="offsetX"]');
   const offsetYValue = document.querySelector('[data-adjust-value="offsetY"]');
   const rotationValue = document.querySelector('[data-adjust-value="rotation"]');
+  const rotationXValue = document.querySelector('[data-adjust-value="rotationX"]');
+  const rotationYValue = document.querySelector('[data-adjust-value="rotationY"]');
 
   if (scaleValue) scaleValue.textContent = `${adjustment.scale.toFixed(2)}x`;
   if (offsetXValue) offsetXValue.textContent = `${adjustment.offsetX}px`;
   if (offsetYValue) offsetYValue.textContent = `${adjustment.offsetY}px`;
   if (rotationValue) rotationValue.textContent = `${adjustment.rotation}°`;
+  if (rotationXValue) rotationXValue.textContent = `${adjustment.rotationX || 0}°`;
+  if (rotationYValue) rotationYValue.textContent = `${adjustment.rotationY || 0}°`;
 }
 
 function loadFilterPresets() {
@@ -320,6 +334,42 @@ function updateAdjustPanel() {
 
   const adjustment = getFilterAdjustment(lastSelectedFilterId);
 
+  const is3DFilter = selectedFilter.type === "3d";
+
+  const extra3DRotationControls = is3DFilter
+    ? `
+      <div class="adjust-control">
+        <div class="adjust-label">
+          <span>Inclinação frente/trás</span>
+          <strong data-adjust-value="rotationX">${adjustment.rotationX || 0}°</strong>
+        </div>
+        <input
+          type="range"
+          min="-45"
+          max="45"
+          step="1"
+          value="${adjustment.rotationX || 0}"
+          data-adjust="rotationX"
+        />
+      </div>
+
+      <div class="adjust-control">
+        <div class="adjust-label">
+          <span>Virar esquerda/direita 3D</span>
+          <strong data-adjust-value="rotationY">${adjustment.rotationY || 0}°</strong>
+        </div>
+        <input
+          type="range"
+          min="-45"
+          max="45"
+          step="1"
+          value="${adjustment.rotationY || 0}"
+          data-adjust="rotationY"
+        />
+      </div>
+    `
+    : "";
+
   filterAdjustPanel.innerHTML = `
     <div class="adjust-title">
       <span>Filtro atual</span>
@@ -373,7 +423,7 @@ function updateAdjustPanel() {
 
     <div class="adjust-control">
       <div class="adjust-label">
-        <span>Rotação</span>
+        <span>Rotação Lateral</span>
         <strong data-adjust-value="rotation">${adjustment.rotation}°</strong>
       </div>
       <input
@@ -385,6 +435,8 @@ function updateAdjustPanel() {
         data-adjust="rotation"
       />
     </div>
+
+    ${extra3DRotationControls}
 
     <div class="adjust-actions">
       <button id="resetAdjustmentsBtn" class="panel-btn panel-btn-secondary">
@@ -551,6 +603,11 @@ function renderFiltersCatalog() {
         <img src="${filter.thumbnail}" alt="${filter.name}">
         <div class="filter-card-name">${filter.name}</div>
       `;
+    } else if (filter.emoji) {
+      card.innerHTML = `
+        <div class="filter-card-placeholder filter-card-emoji">${filter.emoji}</div>
+        <div class="filter-card-name">${filter.name}</div>
+      `;
     } else {
       card.innerHTML = `
         <div class="filter-card-placeholder">🚫</div>
@@ -601,6 +658,7 @@ function resizeCanvas() {
 
   canvas.width = Math.round(rect.width);
   canvas.height = Math.round(rect.height);
+  resizeThreeRenderer(canvas.width, canvas.height);
 }
 
 async function startWebcam() {
@@ -636,6 +694,7 @@ function stopWebcam() {
   cameraActive = false;
   lastVideoTime = -1;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  clearThreeRenderer();
   updateCameraButton();
   statusText.textContent = "Câmara desligada";
 }
@@ -670,7 +729,7 @@ async function createFaceLandmarker() {
     minFacePresenceConfidence: 0.5,
     minTrackingConfidence: 0.5,
     outputFaceBlendshapes: false,
-    outputFacialTransformationMatrixes: false
+    outputFacialTransformationMatrixes: true
   });
 
   drawingUtils = new DrawingUtils(ctx);
@@ -681,6 +740,7 @@ function drawResults(results) {
 
   if (!results.faceLandmarks || results.faceLandmarks.length === 0) {
     statusText.textContent = "À procura de rosto...";
+    clearThreeRenderer();
     return;
   }
 
@@ -724,6 +784,7 @@ function drawResults(results) {
       });
     }
 
+    renderThreeFilters(canvas, landmarks, selectedFilters, filterAdjustments);
     drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filterImages, filterAdjustments);
   }
 }
@@ -765,6 +826,14 @@ function capturePhoto() {
   exportCtx.scale(-1, 1);
   exportCtx.drawImage(video, 0, 0, width, height);
   exportCtx.restore();
+
+  if (threeCanvas) {
+    exportCtx.save();
+    exportCtx.translate(width, 0);
+    exportCtx.scale(-1, 1);
+    exportCtx.drawImage(threeCanvas, 0, 0, width, height);
+    exportCtx.restore();
+  }
 
   exportCtx.save();
   exportCtx.translate(width, 0);
@@ -815,6 +884,7 @@ landmarksToggleBtn.addEventListener("click", () => {
 
   if (!cameraActive) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    clearThreeRenderer();
   }
 });
 
@@ -872,6 +942,8 @@ async function init() {
 
     statusText.textContent = "A carregar filtros...";
     filterImages = await loadFilterImages();
+
+    initThreeRenderer(threeCanvas);
 
     renderCategoriesBar();
     renderFiltersCatalog();
