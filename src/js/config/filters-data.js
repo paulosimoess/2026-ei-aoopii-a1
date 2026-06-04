@@ -98,6 +98,17 @@ export const filtersConfig = [
     category: "3d",
     type: "3d"
   },
+  {
+  id: "hat3d",
+  name: "Chapéu 3D",
+  thumbnail: null,
+  emoji: "🎩",
+  asset: null,
+  model: "./assets/models3d/hat.glb",
+  anchor: "head3d",
+  category: "3d",
+  type: "3d"
+},
 ];
 
 export const categoriesConfig = [
