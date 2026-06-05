@@ -16,6 +16,11 @@ let threeCanvasRef = null;
 let isModelLoaded = false;
 let isHatModelLoaded = false;
 
+const TRANSFORM_SMOOTHING = 0.50;
+
+const glassesSmoothState = createSmoothState();
+const hatSmoothState = createSmoothState();
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -45,6 +50,71 @@ function canvasToThreeCoords(x, y, canvas) {
     x: x - canvas.width / 2,
     y: canvas.height / 2 - y
   };
+}
+
+function createSmoothState() {
+  return {
+    initialized: false,
+    position: new THREE.Vector3(),
+    scale: new THREE.Vector3(1, 1, 1),
+    rotation: new THREE.Euler()
+  };
+}
+
+function resetSmoothState(state) {
+  state.initialized = false;
+}
+
+function lerpAngle(current, target, amount) {
+  let delta = target - current;
+
+  while (delta > Math.PI) {
+    delta -= Math.PI * 2;
+  }
+
+  while (delta < -Math.PI) {
+    delta += Math.PI * 2;
+  }
+
+  return current + delta * amount;
+}
+
+function applySmoothedTransform(
+  group,
+  state,
+  targetPosition,
+  targetScale,
+  targetRotation,
+  amount = TRANSFORM_SMOOTHING
+) {
+  const targetScaleVector = new THREE.Vector3(
+    targetScale,
+    targetScale,
+    targetScale
+  );
+
+  if (!state.initialized) {
+    state.position.copy(targetPosition);
+    state.scale.copy(targetScaleVector);
+    state.rotation.copy(targetRotation);
+    state.initialized = true;
+  } else {
+    state.position.lerp(targetPosition, amount);
+    state.scale.lerp(targetScaleVector, amount);
+
+    state.rotation.x = lerpAngle(state.rotation.x, targetRotation.x, amount);
+    state.rotation.y = lerpAngle(state.rotation.y, targetRotation.y, amount);
+    state.rotation.z = lerpAngle(state.rotation.z, targetRotation.z, amount);
+  }
+
+  group.position.copy(state.position);
+  group.scale.copy(state.scale);
+  group.rotation.copy(state.rotation);
+}
+
+function getYawScaleCompensation(yawRaw, strength = 0.9, max = 1.6) {
+  const amount = Math.abs(yawRaw);
+  return clamp(1 + amount * strength, 1, max);
 }
 
 function normalizeModel(model) {
@@ -331,6 +401,9 @@ export function clearThreeRenderer() {
     hatGroup.visible = false;
   }
 
+  resetSmoothState(glassesSmoothState);
+  resetSmoothState(hatSmoothState);
+
   renderer.clear();
 }
 
@@ -371,22 +444,13 @@ function renderHatFilter(canvas, landmarks, filterAdjustments) {
 
   const sideOffsetX = yawRaw * eyesDistance * 0.15;
 
-  /*
-    Para mexer o chapéu na vertical:
-    - mais negativo: sobe
-    - menos negativo: desce
-  */
   const adjustedX = topHead.x + adjustment.offsetX + sideOffsetX;
   const adjustedY = topHead.y + adjustment.offsetY - eyesDistance * 1.20;
 
   const position = canvasToThreeCoords(adjustedX, adjustedY, canvas);
 
-  /*
-    Tamanho base do boné.
-    Ajusta aqui se quiseres que ele venha maior/menor por defeito.
-  */
   const baseScale = eyesDistance * 3.6;
-  const yawCompensation = 1 + Math.abs(yaw) * 0.25;
+  const yawCompensation = getYawScaleCompensation(yawRaw, 0.65, 1.45);
   const finalScale = baseScale * adjustment.scale * yawCompensation;
 
   const manualRotationZ = (adjustment.rotation * Math.PI) / 180;
@@ -395,13 +459,20 @@ function renderHatFilter(canvas, landmarks, filterAdjustments) {
 
   hatGroup.visible = true;
 
-  hatGroup.position.set(position.x, position.y, 0);
-  hatGroup.scale.set(finalScale, finalScale, finalScale);
+  const targetPosition = new THREE.Vector3(position.x, position.y, 0);
 
-  hatGroup.rotation.set(
+  const targetRotation = new THREE.Euler(
     pitch + manualRotationX,
     yaw + manualRotationY,
     roll + manualRotationZ
+  );
+
+  applySmoothedTransform(
+    hatGroup,
+    hatSmoothState,
+    targetPosition,
+    finalScale,
+    targetRotation
   );
 }
 
@@ -422,11 +493,13 @@ export function renderThreeFilters(
     renderHatFilter(canvas, landmarks, filterAdjustments);
   } else if (hatGroup) {
     hatGroup.visible = false;
+    resetSmoothState(hatSmoothState);
   }
 
   if (!hasGlasses) {
     if (glassesGroup) {
       glassesGroup.visible = false;
+      resetSmoothState(glassesSmoothState);
     }
 
     renderer.render(scene, camera);
@@ -459,41 +532,48 @@ export function renderThreeFilters(
 
   const roll = -Math.atan2(dy, dx);
 
-  const yawRaw = clamp((nose.x - eyesCenterX) / eyesDistance, -0.65, 0.65);
-  const yaw = yawRaw * 1.05;
+  const yawRaw = clamp((nose.x - eyesCenterX) / eyesDistance, -0.70, 0.70);
+  const yaw = yawRaw * 1.25;
 
   const pitch =
     clamp((nose.y - eyesCenterY) / eyesDistance - 0.75, -0.4, 0.4) * 0.45;
 
-  const sideOffsetX = yawRaw * eyesDistance * 0.25;
-  const sideOffsetY = Math.abs(yawRaw) * eyesDistance * 0.08;
+  const sideOffsetX = yawRaw * eyesDistance * 0.35;
+  const sideOffsetY = Math.abs(yawRaw) * eyesDistance * 0.10;
 
   const adjustedX = eyesCenterX + adjustment.offsetX + sideOffsetX;
   const adjustedY =
     eyesCenterY +
     adjustment.offsetY +
-    eyesDistance * 0.25 +
+    eyesDistance * 0.32 +
     sideOffsetY;
 
   const position = canvasToThreeCoords(adjustedX, adjustedY, canvas);
 
   const baseScale = eyesDistance * 2.3;
-  const yawCompensation = 1 + Math.abs(yaw) * 0.55;
+  const yawCompensation = getYawScaleCompensation(yawRaw, 0.95, 1.65);
   const finalScale = baseScale * adjustment.scale * yawCompensation;
 
   glassesGroup.visible = true;
-
-  glassesGroup.position.set(position.x, position.y, 0);
-  glassesGroup.scale.set(finalScale, finalScale, finalScale);
 
   const manualRotationZ = (adjustment.rotation * Math.PI) / 180;
   const manualRotationX = ((adjustment.rotationX || 0) * Math.PI) / 180;
   const manualRotationY = ((adjustment.rotationY || 0) * Math.PI) / 180;
 
-  glassesGroup.rotation.set(
+  const targetPosition = new THREE.Vector3(position.x, position.y, 0);
+
+  const targetRotation = new THREE.Euler(
     pitch + manualRotationX,
     yaw + manualRotationY,
     roll + manualRotationZ
+  );
+
+  applySmoothedTransform(
+    glassesGroup,
+    glassesSmoothState,
+    targetPosition,
+    finalScale,
+    targetRotation
   );
 
   renderer.render(scene, camera);
