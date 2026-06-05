@@ -36,6 +36,24 @@ const threeCanvas = document.getElementById("threeCanvas");
 const FILTER_ADJUSTMENTS_STORAGE_KEY = "ar_face_filter_adjustments";
 const FILTER_PRESETS_STORAGE_KEY = "ar_face_filter_presets";
 
+const FILTER_SLOTS = {
+  hat: "head",
+  crown: "head",
+  santa_hat: "head",
+  witch_hat: "head",
+  hat3d: "head",
+
+  glasses: "eyes",
+  reindeer_glasses: "eyes",
+  sunglasses: "eyes",
+  glasses3d: "eyes",
+
+  mask: "mouth",
+  mustache: "mouth",
+
+  joker: "fullface"
+};
+
 let filterImages = {};
 let faceLandmarker = null;
 let drawingUtils = null;
@@ -45,7 +63,7 @@ let selectedCategory = "all";
 let lastSelectedFilterId = "none";
 let cameraStream = null;
 let cameraActive = false;
-let showLandmarks = true;
+let showLandmarks = false;
 let capturedPhotoDataUrl = "";
 let filterAdjustments = {};
 let filterPresets = [];
@@ -520,6 +538,27 @@ function updateCatalogSelection() {
   });
 }
 
+function getFilterSlot(filterId) {
+  return FILTER_SLOTS[filterId] || "other";
+}
+
+function removeIncompatibleFilters(newFilterId) {
+  const newSlot = getFilterSlot(newFilterId);
+
+  if (newSlot === "fullface") {
+    selectedFilters.clear();
+    return;
+  }
+
+  selectedFilters.forEach((selectedFilterId) => {
+    const selectedSlot = getFilterSlot(selectedFilterId);
+
+    if (selectedSlot === newSlot || selectedSlot === "fullface") {
+      selectedFilters.delete(selectedFilterId);
+    }
+  });
+}
+
 function toggleFilterSelection(filterId) {
   if (filterId === "none") {
     selectedFilters.clear();
@@ -530,9 +569,12 @@ function toggleFilterSelection(filterId) {
 
       if (lastSelectedFilterId === filterId) {
         const remaining = Array.from(selectedFilters);
-        lastSelectedFilterId = remaining.length > 0 ? remaining[remaining.length - 1] : "none";
+        lastSelectedFilterId =
+          remaining.length > 0 ? remaining[remaining.length - 1] : "none";
       }
     } else {
+      removeIncompatibleFilters(filterId);
+
       selectedFilters.add(filterId);
       lastSelectedFilterId = filterId;
     }
