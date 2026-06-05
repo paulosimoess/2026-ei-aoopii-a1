@@ -99,16 +99,46 @@ export const filtersConfig = [
     type: "3d"
   },
   {
-  id: "hat3d",
-  name: "Chapéu 3D",
-  thumbnail: null,
-  emoji: "🎩",
-  asset: null,
-  model: "./assets/models3d/hat.glb",
-  anchor: "head3d",
-  category: "3d",
-  type: "3d"
-},
+    id: "hat3d",
+    name: "Chapéu 3D",
+    thumbnail: null,
+    emoji: "🎩",
+    asset: null,
+    model: "./assets/models3d/hat.glb",
+    anchor: "head3d",
+    category: "3d",
+    type: "3d"
+  },
+  {
+    id: "glitch",
+    name: "Glitch",
+    thumbnail: null,
+    emoji: "⚡",
+    asset: null,
+    anchor: "effect",
+    category: "effects",
+    type: "effect"
+  },
+  {
+    id: "inferno",
+    name: "Inferno",
+    thumbnail: null,
+    emoji: "🔥",
+    asset: null,
+    anchor: "effect",
+    category: "effects",
+    type: "effect"
+  },
+  {
+    id: "matrix",
+    name: "Matrix",
+    thumbnail: null,
+    emoji: "🟩",
+    asset: null,
+    anchor: "effect",
+    category: "effects",
+    type: "effect"
+  },
 ];
 
 export const categoriesConfig = [
@@ -118,5 +148,6 @@ export const categoriesConfig = [
   { id: "easter", label: "Páscoa" },
   { id: "halloween", label: "Halloween" },
   { id: "fun", label: "Divertidos" },
-  { id: "3d", label: "3D" }
+  { id: "3d", label: "3D" },
+  { id: "effects", label: "Efeitos" }
 ];

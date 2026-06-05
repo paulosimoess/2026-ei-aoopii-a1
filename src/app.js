@@ -6,13 +6,8 @@ import {
 
 import { filtersConfig, categoriesConfig } from "./js/config/filters-data.js";
 import { loadFilterImages, drawSimpleFilter } from "./js/render/filters-renderer.js";
-
-import {
-  initThreeRenderer,
-  resizeThreeRenderer,
-  renderThreeFilters,
-  clearThreeRenderer
-} from "./js/render/three-renderer.js";
+import { initThreeRenderer, resizeThreeRenderer, renderThreeFilters, clearThreeRenderer} from "./js/render/three-renderer.js";
+import { drawEffectFilters, clearEffectStates} from "./js/render/effects-renderer.js";
 
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
@@ -51,7 +46,11 @@ const FILTER_SLOTS = {
   mask: "mouth",
   mustache: "mouth",
 
-  joker: "fullface"
+  joker: "fullface",
+
+  glitch: "effect",
+  inferno: "effect",
+  matrix: "effect"
 };
 
 let filterImages = {};
@@ -783,6 +782,7 @@ function drawResults(results) {
   if (!results.faceLandmarks || results.faceLandmarks.length === 0) {
     statusText.textContent = "À procura de rosto...";
     clearThreeRenderer();
+    clearEffectStates();
     return;
   }
 
@@ -827,7 +827,24 @@ function drawResults(results) {
     }
 
     renderThreeFilters(canvas, landmarks, selectedFilters, filterAdjustments);
-    drawSimpleFilter(ctx, canvas, landmarks, selectedFilters, filterImages, filterAdjustments);
+
+    drawSimpleFilter(
+      ctx,
+      canvas,
+      landmarks,
+      selectedFilters,
+      filterImages,
+      filterAdjustments
+    );
+
+    drawEffectFilters(
+      ctx,
+      canvas,
+      video,
+      landmarks,
+      selectedFilters,
+      filterAdjustments
+    );
   }
 }
 
@@ -927,6 +944,7 @@ landmarksToggleBtn.addEventListener("click", () => {
   if (!cameraActive) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     clearThreeRenderer();
+    clearEffectStates();
   }
 });
 
