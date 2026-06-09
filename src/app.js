@@ -326,6 +326,85 @@ function deletePreset(presetId) {
   updateAdjustPanel();
 }
 
+function getFilterDescription(filter) {
+  if (!filter) {
+    return "Seleciona um filtro para ajustar tamanho, posição e rotação.";
+  }
+
+  if (filter.type === "3d") {
+    return "Filtro 3D com modelo em tempo real, ajustável em escala, posição e rotação.";
+  }
+
+  if (filter.type === "effect") {
+    return "Efeito visual aplicado sobre a zona do rosto.";
+  }
+
+  if (filter.anchor === "head") {
+    return "Filtro aplicado na zona da cabeça.";
+  }
+
+  if (filter.anchor === "eyes") {
+    return "Filtro aplicado na zona dos olhos.";
+  }
+
+  if (filter.anchor === "mouth") {
+    return "Filtro aplicado na zona da boca.";
+  }
+
+  if (filter.anchor === "fullface") {
+    return "Filtro aplicado sobre a face completa.";
+  }
+
+  return "Filtro ajustável em tamanho, posição e rotação.";
+}
+
+function getAdjustLabels(filter) {
+  const labels = {
+    scale: "Tamanho",
+    offsetX: "Posição horizontal",
+    offsetY: "Posição vertical",
+    rotation: "Rotação lateral",
+    rotationX: "Inclinação frente/trás",
+    rotationY: "Virar esquerda/direita 3D"
+  };
+
+  if (!filter) {
+    return labels;
+  }
+
+  if (filter.id === "glitch") {
+    return {
+      ...labels,
+      scale: "Intensidade do glitch",
+      offsetX: "Deslocação horizontal",
+      offsetY: "Deslocação vertical",
+      rotation: "Rotação"
+    };
+  }
+
+  if (filter.id === "inferno") {
+    return {
+      ...labels,
+      scale: "Intensidade das chamas",
+      offsetX: "Posição horizontal",
+      offsetY: "Altura das chamas",
+      rotation: "Rotação"
+    };
+  }
+
+  if (filter.id === "matrix") {
+    return {
+      ...labels,
+      scale: "Densidade do Matrix",
+      offsetX: "Posição horizontal",
+      offsetY: "Posição vertical",
+      rotation: "Rotação"
+    };
+  }
+
+  return labels;
+}
+
 function updateAdjustPanel() {
   if (!filterAdjustPanel) return;
 
@@ -350,14 +429,15 @@ function updateAdjustPanel() {
   }
 
   const adjustment = getFilterAdjustment(lastSelectedFilterId);
-
+  const adjustLabels = getAdjustLabels(selectedFilter);
+  const filterDescription = getFilterDescription(selectedFilter);
   const is3DFilter = selectedFilter.type === "3d";
 
   const extra3DRotationControls = is3DFilter
     ? `
       <div class="adjust-control">
         <div class="adjust-label">
-          <span>Inclinação frente/trás</span>
+          <span>${adjustLabels.rotationX}</span>
           <strong data-adjust-value="rotationX">${adjustment.rotationX || 0}°</strong>
         </div>
         <input
@@ -372,7 +452,7 @@ function updateAdjustPanel() {
 
       <div class="adjust-control">
         <div class="adjust-label">
-          <span>Virar esquerda/direita 3D</span>
+          <span>${adjustLabels.rotationY}</span>
           <strong data-adjust-value="rotationY">${adjustment.rotationY || 0}°</strong>
         </div>
         <input
@@ -393,9 +473,13 @@ function updateAdjustPanel() {
       <strong>${escapeHtml(selectedFilter.name)}</strong>
     </div>
 
+    <p class="adjust-description">
+      ${escapeHtml(filterDescription)}
+    </p>
+
     <div class="adjust-control">
       <div class="adjust-label">
-        <span>Tamanho</span>
+        <span>${adjustLabels.scale}</span>
         <strong data-adjust-value="scale">${adjustment.scale.toFixed(2)}x</strong>
       </div>
       <input
@@ -410,7 +494,7 @@ function updateAdjustPanel() {
 
     <div class="adjust-control">
       <div class="adjust-label">
-        <span>Posição horizontal</span>
+        <span>${adjustLabels.offsetX}</span>
         <strong data-adjust-value="offsetX">${adjustment.offsetX}px</strong>
       </div>
       <input
@@ -425,7 +509,7 @@ function updateAdjustPanel() {
 
     <div class="adjust-control">
       <div class="adjust-label">
-        <span>Posição vertical</span>
+        <span>${adjustLabels.offsetY}</span>
         <strong data-adjust-value="offsetY">${adjustment.offsetY}px</strong>
       </div>
       <input
@@ -440,7 +524,7 @@ function updateAdjustPanel() {
 
     <div class="adjust-control">
       <div class="adjust-label">
-        <span>Rotação Lateral</span>
+        <span>${adjustLabels.rotation}</span>
         <strong data-adjust-value="rotation">${adjustment.rotation}°</strong>
       </div>
       <input
