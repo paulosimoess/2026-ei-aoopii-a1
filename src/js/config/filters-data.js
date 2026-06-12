@@ -64,28 +64,12 @@ export const filtersConfig = [
     category: "halloween"
   },
   {
-    id: "reindeer_glasses",
-    name: "Rena",
-    thumbnail: "./assets/thumbnails/reindeer_glasses.png",
-    asset: "./assets/filters/reindeer_glasses.png",
-    anchor: "eyes",
-    category: "christmas"
-  },
-  {
     id: "sunglasses",
     name: "Óculos de Sol",
     thumbnail: "./assets/thumbnails/sunglasses.webp",
     asset: "./assets/filters/sunglasses.webp",
     anchor: "eyes",
     category: "fun"
-  },
-  {
-    id: "joker",
-    name: "Joker",
-    thumbnail: "./assets/thumbnails/joker.png",
-    asset: "./assets/filters/joker.png",
-    anchor: "fullface",
-    category: "halloween"
   },
   {
     id: "glasses3d",
@@ -139,13 +123,31 @@ export const filtersConfig = [
     category: "effects",
     type: "effect"
   },
+  {
+    id: "pixel_glasses",
+    name: "Pixel Glasses",
+    thumbnail: null,
+    emoji: "🕶️",
+    asset: null,
+    anchor: "eyes",
+    category: "effects",
+    type: "canvas"
+  },
+  {
+    id: "neon_mask",
+    name: "Neon Mask",
+    thumbnail: null,
+    emoji: "💠",
+    asset: null,
+    anchor: "fullface",
+    category: "effects",
+    type: "canvas"
+  },
 ];
 
 export const categoriesConfig = [
   { id: "all", label: "Todos" },
-  { id: "animals", label: "Animais" },
   { id: "christmas", label: "Natal" },
-  { id: "easter", label: "Páscoa" },
   { id: "halloween", label: "Halloween" },
   { id: "fun", label: "Divertidos" },
   { id: "3d", label: "3D" },

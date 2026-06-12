@@ -6,8 +6,16 @@ import {
 
 import { filtersConfig, categoriesConfig } from "./js/config/filters-data.js";
 import { loadFilterImages, drawSimpleFilter } from "./js/render/filters-renderer.js";
-import { initThreeRenderer, resizeThreeRenderer, renderThreeFilters, clearThreeRenderer} from "./js/render/three-renderer.js";
-import { drawEffectFilters, clearEffectStates} from "./js/render/effects-renderer.js";
+import {
+  initThreeRenderer,
+  resizeThreeRenderer,
+  renderThreeFilters,
+  clearThreeRenderer
+} from "./js/render/three-renderer.js";
+import {
+  drawEffectFilters,
+  clearEffectStates
+} from "./js/render/effects-renderer.js";
 
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
@@ -27,6 +35,7 @@ const photoModal = document.getElementById("photoModal");
 const photoModalImage = document.getElementById("photoModalImage");
 const closePhotoModalBtn = document.getElementById("closePhotoModalBtn");
 const threeCanvas = document.getElementById("threeCanvas");
+const clearFiltersBtn = document.getElementById("clearFiltersBtn");
 
 const FILTER_ADJUSTMENTS_STORAGE_KEY = "ar_face_filter_adjustments";
 const FILTER_PRESETS_STORAGE_KEY = "ar_face_filter_presets";
@@ -39,14 +48,14 @@ const FILTER_SLOTS = {
   hat3d: "head",
 
   glasses: "eyes",
-  reindeer_glasses: "eyes",
   sunglasses: "eyes",
   glasses3d: "eyes",
+  pixel_glasses: "eyes",
 
   mask: "mouth",
   mustache: "mouth",
 
-  joker: "fullface",
+  neon_mask: "fullface",
 
   glitch: "effect",
   inferno: "effect",
@@ -87,7 +96,9 @@ function updateCameraButton() {
 }
 
 function updateLandmarksButton() {
-  landmarksToggleBtn.textContent = showLandmarks ? "Ocultar landmarks" : "Mostrar landmarks";
+  landmarksToggleBtn.textContent = showLandmarks
+    ? "Ocultar deteção facial"
+    : "Mostrar deteção facial";
 }
 
 function getDefaultAdjustment() {
@@ -668,6 +679,20 @@ function toggleFilterSelection(filterId) {
   updateAdjustPanel();
 }
 
+function clearSelectedFilters() {
+  selectedFilters.clear();
+  lastSelectedFilterId = "none";
+
+  clearThreeRenderer();
+  clearEffectStates();
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  updateFilterLabel();
+  updateCatalogSelection();
+  updateAdjustPanel();
+}
+
 function updateCategorySelection() {
   const buttons = document.querySelectorAll(".category-chip");
 
@@ -818,8 +843,11 @@ function stopWebcam() {
   video.srcObject = null;
   cameraActive = false;
   lastVideoTime = -1;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   clearThreeRenderer();
+  clearEffectStates();
+
   updateCameraButton();
   statusText.textContent = "Câmara desligada";
 }
@@ -1031,6 +1059,12 @@ landmarksToggleBtn.addEventListener("click", () => {
     clearEffectStates();
   }
 });
+
+if (clearFiltersBtn) {
+  clearFiltersBtn.addEventListener("click", () => {
+    clearSelectedFilters();
+  });
+}
 
 capturePhotoBtn.addEventListener("click", () => {
   capturePhoto();
